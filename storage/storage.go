@@ -2,7 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
+	"log"
 	"net/http"
+	"os"
+	"strconv"
 )
 
 // Define the Database struct
@@ -30,7 +34,7 @@ type Line struct {
 }
 
 type DBConnector interface {
-	Connect() error
+	Connect(user, password, host, dbname string) error
 	Disconnect() error
 	CreateTable(table Table) error
 	DeleteTable(table Table) error
@@ -39,44 +43,123 @@ type DBConnector interface {
 	UpdateLine(line Line) error
 }
 
-func register(w http.ResponseWriter, r *http.Request) {
+var dbConnector DBConnector
+
+func main() {
+	if len(os.Args) < 2 {
+		log.Fatal("Usage: storage <port>")
+	}
+	port, err := strconv.Atoi(os.Args[1])
+	if err != nil {
+		log.Fatal("Invalid command line argument: ", err)
+	}
+
+	http.HandleFunc("/register", handleRegister)
+	http.HandleFunc("/createTable", handleCreateTable)
+	http.HandleFunc("/deleteTable", handleDeleteTable)
+	http.HandleFunc("/insertLine", handleInsertLine)
+	http.HandleFunc("/deleteLine", handleDeleteLine)
+	http.HandleFunc("/updateLine", handleUpdateLine)
+
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
+}
+
+func handleRegister(w http.ResponseWriter, r *http.Request) {
 	var db Database
-	json.NewDecoder(r.Body).Decode(&db)
-	// implement your logic to register database here
-	json.NewEncoder(w).Encode(db) // placeholder response
+	if err := json.NewDecoder(r.Body).Decode(&db); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	switch db.Type {
+	case "mysql":
+		dbConnector = &MySQLConnector{}
+	case "Cassandra":
+		dbConnector = &CassandraConnector{}
+	default:
+		http.Error(w, "Invalid database type", http.StatusBadRequest)
+		return
+	}
+
+	if err := dbConnector.Connect(db.User, db.Password, db.Host, db.Database); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
-func createTable(w http.ResponseWriter, r *http.Request) {
+func handleCreateTable(w http.ResponseWriter, r *http.Request) {
 	var table Table
-	json.NewDecoder(r.Body).Decode(&table)
-	// implement your logic to create table here
-	json.NewEncoder(w).Encode(table) // placeholder response
+	if err := json.NewDecoder(r.Body).Decode(&table); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := dbConnector.CreateTable(table); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
-func deleteTable(w http.ResponseWriter, r *http.Request) {
+func handleDeleteTable(w http.ResponseWriter, r *http.Request) {
 	var table Table
-	json.NewDecoder(r.Body).Decode(&table)
-	// implement your logic to delete table here
-	json.NewEncoder(w).Encode(table) // placeholder
+	if err := json.NewDecoder(r.Body).Decode(&table); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := dbConnector.DeleteTable(table); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
-func deleteLine(w http.ResponseWriter, r *http.Request) {
+func handleInsertLine(w http.ResponseWriter, r *http.Request) {
 	var line Line
-	json.NewDecoder(r.Body).Decode(&line)
-	// implement your logic to delete line here
-	json.NewEncoder(w).Encode(line) // placeholder
+	if err := json.NewDecoder(r.Body).Decode(&line); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := dbConnector.InsertLine(line); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
-func insertLine(w http.ResponseWriter, r *http.Request) {
+func handleDeleteLine(w http.ResponseWriter, r *http.Request) {
 	var line Line
-	json.NewDecoder(r.Body).Decode(&line)
-	// implement your logic to insert line here
-	json.NewEncoder(w).Encode(line) // placeholder
+	if err := json.NewDecoder(r.Body).Decode(&line); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := dbConnector.DeleteLine(line); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
-func updateLine(w http.ResponseWriter, r *http.Request) {
+func handleUpdateLine(w http.ResponseWriter, r *http.Request) {
 	var line Line
-	json.NewDecoder(r.Body).Decode(&line)
-	// implement your logic to update line here
-	json.NewEncoder(w).Encode(line) // placeholder
+	if err := json.NewDecoder(r.Body).Decode(&line); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := dbConnector.UpdateLine(line); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

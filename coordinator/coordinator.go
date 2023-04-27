@@ -7,6 +7,12 @@ import (
 
 // Define the server struct
 type Server struct {
+	Host           string                    `json:"host"`
+	CommandPort    int                       `json:"command_port"`
+	StorageServers map[string]*StorageServer `json:"storage_servers"`
+}
+
+type StorageServer struct {
 	Host        string `json:"host"`
 	CommandPort int    `json:"command_port"`
 }

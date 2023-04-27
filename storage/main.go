@@ -1,27 +1,28 @@
 package main
 
 import (
-	"github.com/gorilla/mux"
+	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
 )
 
 func main() {
-	// detect port argument
 	if len(os.Args) < 2 {
-		println("Usage: storage <port>")
-		return
+		log.Fatal("Usage: storage <port>")
+	}
+	port, err := strconv.Atoi(os.Args[1])
+	if err != nil {
+		log.Fatal("Invalid command line argument: ", err)
 	}
 
-	router := mux.NewRouter()
-	router.HandleFunc("/register", register).Methods("POST")
-	router.HandleFunc("/createTable", createTable).Methods("POST")
-	router.HandleFunc("/deleteTable", deleteTable).Methods("DELETE")
-	router.HandleFunc("/deleteLine", deleteLine).Methods("DELETE")
-	router.HandleFunc("/insertLine", insertLine).Methods("POST")
-	router.HandleFunc("/updateLine", updateLine).Methods("PUT")
+	http.HandleFunc("/register", handleRegister)
+	http.HandleFunc("/createTable", handleCreateTable)
+	http.HandleFunc("/deleteTable", handleDeleteTable)
+	http.HandleFunc("/insertLine", handleInsertLine)
+	http.HandleFunc("/deleteLine", handleDeleteLine)
+	http.HandleFunc("/updateLine", handleUpdateLine)
 
-	port, _ := strconv.Atoi(os.Args[1])
-	http.ListenAndServe(":"+strconv.Itoa(port), router)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 }
