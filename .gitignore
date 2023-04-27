@@ -1,0 +1,28 @@
+# Compiled binaries and executables
+/dist
+*.exe
+*.out
+
+# Go build cache, modules, and binaries
+*.o
+*.a
+*.so
+/vendor/
+*.test
+*.mod
+*.sum
+
+# Go coverage files
+*.coverprofile
+
+# Log files
+*.log
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*.bak
+*~
