@@ -5,10 +5,6 @@ import (
 	"net/http"
 )
 
-import (
-	"github.com/gorilla/mux"
-)
-
 // Define the server struct
 type Server struct {
 	Host        string `json:"host"`
@@ -27,17 +23,6 @@ type Line struct {
 	Table      string            `json:"table"`
 	PrimaryKey string            `json:"primary_key"`
 	Line       map[string]string `json:"line"`
-}
-
-func main() {
-	router := mux.NewRouter()
-	router.HandleFunc("/register", register).Methods("POST")
-	router.HandleFunc("/createTable", createTable).Methods("POST")
-	router.HandleFunc("/deleteTable", deleteTable).Methods("DELETE")
-	router.HandleFunc("/deleteLine", deleteLine).Methods("DELETE")
-	router.HandleFunc("/insertLine", insertLine).Methods("POST")
-	router.HandleFunc("/updateLine", updateLine).Methods("PUT")
-	http.ListenAndServe(":8000", router)
 }
 
 func register(w http.ResponseWriter, r *http.Request) {

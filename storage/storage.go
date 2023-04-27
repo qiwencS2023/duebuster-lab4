@@ -2,10 +2,7 @@ package storage
 
 import (
 	"encoding/json"
-	"github.com/gorilla/mux"
 	"net/http"
-	"os"
-	"strconv"
 )
 
 // Define the Database struct
@@ -32,17 +29,14 @@ type Line struct {
 	Line       map[string]string `json:"line"`
 }
 
-func main() {
-	router := mux.NewRouter()
-	router.HandleFunc("/register", register).Methods("POST")
-	router.HandleFunc("/createTable", createTable).Methods("POST")
-	router.HandleFunc("/deleteTable", deleteTable).Methods("DELETE")
-	router.HandleFunc("/deleteLine", deleteLine).Methods("DELETE")
-	router.HandleFunc("/insertLine", insertLine).Methods("POST")
-	router.HandleFunc("/updateLine", updateLine).Methods("PUT")
-
-	port, _ := strconv.Atoi(os.Args[1])
-	http.ListenAndServe(":"+strconv.Itoa(port), router)
+type DBConnector interface {
+	Connect() error
+	Disconnect() error
+	CreateTable(table Table) error
+	DeleteTable(table Table) error
+	DeleteLine(line Line) error
+	InsertLine(line Line) error
+	UpdateLine(line Line) error
 }
 
 func register(w http.ResponseWriter, r *http.Request) {
