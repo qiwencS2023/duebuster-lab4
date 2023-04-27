@@ -1,4 +1,4 @@
-package storage
+package main
 
 import (
 	"github.com/gorilla/mux"
@@ -8,6 +8,12 @@ import (
 )
 
 func main() {
+	// detect port argument
+	if len(os.Args) < 2 {
+		println("Usage: storage <port>")
+		return
+	}
+
 	router := mux.NewRouter()
 	router.HandleFunc("/register", register).Methods("POST")
 	router.HandleFunc("/createTable", createTable).Methods("POST")
