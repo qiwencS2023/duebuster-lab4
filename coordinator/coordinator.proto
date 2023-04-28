@@ -1,0 +1,27 @@
+syntax = "proto3";
+option go_package = "./main";
+
+service CoordinatorService {
+  rpc CreateTable (Table) returns (CoordinatorResponse) {}
+  rpc DeleteTable (Table) returns (CoordinatorResponse) {}
+  rpc InsertLine (Line) returns (CoordinatorResponse) {}
+  rpc DeleteLine (Line) returns (CoordinatorResponse) {}
+  rpc GetLine (Line) returns (Line) {}
+  rpc UpdateLine (Line) returns (CoordinatorResponse) {}
+}
+
+message CoordinatorResponse {
+  string message = 1;
+}
+
+message Table {
+  string name = 1;
+  map<string, string> columns = 2;
+  string primary_key = 3;
+}
+
+message Line {
+  string table = 1;
+  string primary_key = 2;
+  map<string, string> line = 3;
+}
