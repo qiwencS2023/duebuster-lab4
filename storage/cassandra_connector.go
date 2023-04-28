@@ -9,6 +9,39 @@ type CassandraConnector struct {
 	session *gocql.Session
 }
 
+func (c *CassandraConnector) GetLine(request *GetLineRequest) (*Line, error) {
+	table := request.Table
+	pk := request.PrimaryKeyValue
+
+	// Create CQL command
+	cmd := fmt.Sprintf("SELECT * FROM %s WHERE %s = %s", table.Name, table.PrimaryKey, pk)
+
+	// Execute CQL command
+	rows := c.session.Query(cmd).Iter()
+
+	if rows.NumRows() == 0 {
+		return nil, fmt.Errorf("no rows found")
+	}
+
+	// put into map[columnName]columnValue
+	columnValues := make(map[string]interface{})
+	rows.MapScan(columnValues)
+
+	// stringify values
+	columnValuesString := make(map[string]string)
+	for key, value := range columnValues {
+		columnValuesString[key] = fmt.Sprintf("%v", value)
+	}
+
+	// Create Line
+	line := &Line{
+		Table: table.Name,
+		Line:  columnValuesString,
+	}
+
+	return line, nil
+}
+
 func (connector *CassandraConnector) Connect(user, password, host, dbname string) error {
 	cluster := gocql.NewCluster(host)
 	cluster.Authenticator = gocql.PasswordAuthenticator{
@@ -30,7 +63,7 @@ func (connector *CassandraConnector) Disconnect() error {
 	return nil
 }
 
-func (connector *CassandraConnector) CreateTable(table Table) error {
+func (connector *CassandraConnector) CreateTable(table *Table) error {
 	// Create column definitions for CQL
 	columns := ""
 	for name, t := range table.Columns {
@@ -48,7 +81,7 @@ func (connector *CassandraConnector) CreateTable(table Table) error {
 	return nil
 }
 
-func (connector *CassandraConnector) DeleteTable(table Table) error {
+func (connector *CassandraConnector) DeleteTable(table *Table) error {
 	cmd := fmt.Sprintf("DROP TABLE IF EXISTS %s", table.Name)
 	if err := connector.session.Query(cmd).Exec(); err != nil {
 		return err
@@ -56,7 +89,7 @@ func (connector *CassandraConnector) DeleteTable(table Table) error {
 	return nil
 }
 
-func (connector *CassandraConnector) DeleteLine(line Line) error {
+func (connector *CassandraConnector) DeleteLine(line *Line) error {
 	cmd := fmt.Sprintf("DELETE FROM %s WHERE %s = ?", line.Table, line.PrimaryKey)
 	if err := connector.session.Query(cmd, line.Line[line.PrimaryKey]).Exec(); err != nil {
 		return err
@@ -64,10 +97,10 @@ func (connector *CassandraConnector) DeleteLine(line Line) error {
 	return nil
 }
 
-func (connector *CassandraConnector) InsertLine(line Line) error {
+func (connector *CassandraConnector) InsertLine(line *Line) error {
 	keys := ""
 	values := ""
-	for key, _ := range line.Line {
+	for key := range line.Line {
 		keys += key + ","
 		values += "?,"
 	}
@@ -81,7 +114,7 @@ func (connector *CassandraConnector) InsertLine(line Line) error {
 	return nil
 }
 
-func (connector *CassandraConnector) UpdateLine(line Line) error {
+func (connector *CassandraConnector) UpdateLine(line *Line) error {
 	updates := ""
 	values := make([]interface{}, 0, len(line.Line))
 

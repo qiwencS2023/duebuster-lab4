@@ -1,165 +1,91 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"log"
-	"net/http"
-	"os"
-	"strconv"
+	"golang.org/x/net/context"
 )
 
-// Define the Database struct
-type Database struct {
-	Type     string `json:"type"`
-	Host     string `json:"host"`
-	Port     int    `json:"port"`
-	Database string `json:"database"`
-	User     string `json:"user"`
-	Password string `json:"password"`
+type StorageServerImpl struct {
+	dbConnector DBConnector
 }
 
-// Define the Table struct (same as before)
-type Table struct {
-	Name       string            `json:"name"`
-	Columns    map[string]string `json:"columns"`
-	PrimaryKey string            `json:"primary_key"`
-}
-
-// Define the Line struct (same as before)
-type Line struct {
-	Table      string            `json:"table"`
-	PrimaryKey string            `json:"primary_key"`
-	Line       map[string]string `json:"line"`
+func (s *StorageServerImpl) mustEmbedUnimplementedStorageServer() {
+	panic("implement me")
 }
 
 type DBConnector interface {
 	Connect(user, password, host, dbname string) error
 	Disconnect() error
-	CreateTable(table Table) error
-	DeleteTable(table Table) error
-	DeleteLine(line Line) error
-	InsertLine(line Line) error
-	UpdateLine(line Line) error
+	CreateTable(table *Table) error
+	DeleteTable(table *Table) error
+	DeleteLine(line *Line) error
+	InsertLine(line *Line) error
+	UpdateLine(line *Line) error
+	GetLine(request *GetLineRequest) (*Line, error)
 }
 
-var dbConnector DBConnector
-
-func main() {
-	if len(os.Args) < 2 {
-		log.Fatal("Usage: storage <port>")
-	}
-	port, err := strconv.Atoi(os.Args[1])
-	if err != nil {
-		log.Fatal("Invalid command line argument: ", err)
-	}
-
-	http.HandleFunc("/register", handleRegister)
-	http.HandleFunc("/createTable", handleCreateTable)
-	http.HandleFunc("/deleteTable", handleDeleteTable)
-	http.HandleFunc("/insertLine", handleInsertLine)
-	http.HandleFunc("/deleteLine", handleDeleteLine)
-	http.HandleFunc("/updateLine", handleUpdateLine)
-
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
-}
-
-func handleRegister(w http.ResponseWriter, r *http.Request) {
-	var db Database
-	if err := json.NewDecoder(r.Body).Decode(&db); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
+func (s *StorageServerImpl) Register(ctx context.Context, db *Database) (*StorageResponse, error) {
+	// db type
 	switch db.Type {
 	case "mysql":
-		dbConnector = &MySQLConnector{}
-	case "Cassandra":
-		dbConnector = &CassandraConnector{}
+		s.dbConnector = &MySQLConnector{}
+	case "cassandra":
+		s.dbConnector = &CassandraConnector{}
 	default:
-		http.Error(w, "Invalid database type", http.StatusBadRequest)
-		return
+		return nil, fmt.Errorf("invalid database type, only mysql and cassandra are supported")
 	}
 
-	if err := dbConnector.Connect(db.User, db.Password, db.Host, db.Database); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	if err := s.dbConnector.Connect(db.User, db.Password, db.Host, db.Database); err != nil {
+		return nil, err
 	}
 
-	w.WriteHeader(http.StatusOK)
+	return &StorageResponse{}, nil
 }
 
-func handleCreateTable(w http.ResponseWriter, r *http.Request) {
-	var table Table
-	if err := json.NewDecoder(r.Body).Decode(&table); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+func (s *StorageServerImpl) CreateTable(ctx context.Context, table *Table) (*StorageResponse, error) {
+	if err := s.dbConnector.CreateTable(table); err != nil {
+		return nil, err
 	}
 
-	if err := dbConnector.CreateTable(table); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
+	return &StorageResponse{}, nil
 }
 
-func handleDeleteTable(w http.ResponseWriter, r *http.Request) {
-	var table Table
-	if err := json.NewDecoder(r.Body).Decode(&table); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+func (s *StorageServerImpl) DeleteTable(ctx context.Context, table *Table) (*StorageResponse, error) {
+	if err := s.dbConnector.DeleteTable(table); err != nil {
+		return nil, err
 	}
 
-	if err := dbConnector.DeleteTable(table); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
+	return &StorageResponse{}, nil
 }
 
-func handleInsertLine(w http.ResponseWriter, r *http.Request) {
-	var line Line
-	if err := json.NewDecoder(r.Body).Decode(&line); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+func (s *StorageServerImpl) InsertLine(ctx context.Context, line *Line) (*StorageResponse, error) {
+	if err := s.dbConnector.InsertLine(line); err != nil {
+		return nil, err
 	}
 
-	if err := dbConnector.InsertLine(line); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
+	return &StorageResponse{}, nil
 }
 
-func handleDeleteLine(w http.ResponseWriter, r *http.Request) {
-	var line Line
-	if err := json.NewDecoder(r.Body).Decode(&line); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+func (s *StorageServerImpl) DeleteLine(ctx context.Context, line *Line) (*StorageResponse, error) {
+	if err := s.dbConnector.DeleteLine(line); err != nil {
+		return nil, err
 	}
 
-	if err := dbConnector.DeleteLine(line); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
+	return &StorageResponse{}, nil
 }
 
-func handleUpdateLine(w http.ResponseWriter, r *http.Request) {
-	var line Line
-	if err := json.NewDecoder(r.Body).Decode(&line); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+func (s *StorageServerImpl) UpdateLine(ctx context.Context, line *Line) (*StorageResponse, error) {
+	if err := s.dbConnector.UpdateLine(line); err != nil {
+		return nil, err
 	}
 
-	if err := dbConnector.UpdateLine(line); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	return &StorageResponse{}, nil
+}
 
-	w.WriteHeader(http.StatusOK)
+func (s *StorageServerImpl) GetLine(ctx context.Context, request *GetLineRequest) (*Line, error) {
+	if line, err := s.dbConnector.GetLine(request); err != nil {
+		return nil, err
+	} else {
+		return line, nil
+	}
 }

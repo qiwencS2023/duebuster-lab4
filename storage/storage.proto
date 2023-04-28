@@ -1,0 +1,47 @@
+syntax = "proto3";
+option go_package = "./main";
+
+service Storage {
+  rpc Register (Database) returns (StorageResponse) {};
+  rpc CreateTable (Table) returns (StorageResponse) {};
+  rpc DeleteTable (Table) returns (StorageResponse) {};
+  rpc InsertLine (Line) returns (StorageResponse) {};
+  rpc DeleteLine (Line) returns (StorageResponse) {};
+  rpc UpdateLine (Line) returns (StorageResponse) {};
+  rpc GetLine (GetLineRequest) returns (Line) {};
+}
+
+message GetLineRequest {
+  Table table = 1;
+  string primary_key_value = 2;
+}
+
+message StorageResponse {
+  enum Status {
+    OK = 0;
+    ERROR = 1;
+  }
+  Status status = 1;
+  string message = 2;
+}
+
+message Database {
+  string type = 1;
+  string host = 2;
+  int32 port = 3;
+  string database = 4;
+  string user = 5;
+  string password = 6;
+}
+
+message Table {
+  string name = 1;
+  map<string, string> columns = 2;
+  string primary_key = 3;
+}
+
+message Line {
+  string table = 1;
+  string primary_key = 2;
+  map<string, string> line = 3;
+}
