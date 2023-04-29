@@ -10,12 +10,45 @@ import (
 	"strconv"
 )
 
+type StorageCommand struct {
+	// [-d <database> -dp <data port> -h <host> -u <user> -pw <password>]
+	Port     int
+	Database string
+	DataPort int
+	Host     string
+	User     string
+	Password string
+}
+
 func main() {
 	if len(os.Args) < 2 {
-		log.Fatal("Usage: storage <port>")
+		log.Fatal("Usage: storage -p <port> [-d <database> -dp <data port> -h <host> -u <user> -pw <password>]")
 	}
 
-	port, _ := strconv.Atoi(os.Args[1])
+	// parse all command line arguments
+	var command StorageCommand
+	for i := 1; i < len(os.Args); i++ {
+		switch os.Args[i] {
+		case "-p":
+			i++
+			command.Port, _ = strconv.Atoi(os.Args[i])
+		case "-d":
+			i++
+			command.Database = os.Args[i]
+		case "-dp":
+			i++
+			command.DataPort, _ = strconv.Atoi(os.Args[i])
+		case "-h":
+			i++
+			command.Host = os.Args[i]
+		case "-u":
+			i++
+			command.User = os.Args[i]
+		case "-pw":
+			i++
+			command.Password = os.Args[i]
+		}
+	}
 
 	server := &StorageServerImpl{}
 
@@ -24,7 +57,7 @@ func main() {
 	RegisterStorageServer(grpcServer, server)
 
 	go func() {
-		lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+		lis, err := net.Listen("tcp", fmt.Sprintf(":%d", command.Port))
 		if err != nil {
 			log.Fatalf("failed to listen: %v", err)
 		}

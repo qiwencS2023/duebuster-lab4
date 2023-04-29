@@ -17,6 +17,11 @@ var table = &Table{
 	PrimaryKey: "id",
 }
 
+var createTableRequest = &CreateTableRequest{
+	Table:          table,
+	PartitionCount: 2,
+}
+
 func startStorageServer(port string) (StorageClient, context.CancelFunc, error) {
 	os.Args = []string{"storage", port}
 
@@ -66,7 +71,7 @@ func mockStorageCluster(numStorage int) ([]string, context.CancelFunc, error) {
 	}
 	return ports, func() {
 		for _, server := range storageServers {
-			server.cancelServer()
+			server.stop()
 		}
 	}, nil
 }
@@ -114,7 +119,11 @@ func TestCoordinatorServerImpl_CreateTable(t *testing.T) {
 	}
 	defer cancelServer()
 
-	resp, err := cClient.CreateTable(context.Background(), table)
+	resp, err := cClient.CreateTable(context.Background(), &CreateTableRequest{
+		Table:          table,
+		PartitionCount: 2,
+	})
+
 	if err != nil {
 		t.Errorf("CreateTable() error = %v", err)
 	}
@@ -134,7 +143,7 @@ func TestCoordinatorServerImpl_DeleteLine(t *testing.T) {
 	}
 	defer cancelServer()
 
-	resp, err := cClient.CreateTable(context.Background(), table)
+	resp, err := cClient.CreateTable(context.Background(), createTableRequest)
 	if err != nil {
 		t.Errorf("CreateTable() error = %v", err)
 	}
@@ -154,7 +163,7 @@ func TestCoordinatorServerImpl_DeleteTable(t *testing.T) {
 	}
 	defer cancelServer()
 
-	resp, err := cClient.CreateTable(context.Background(), table)
+	resp, err := cClient.CreateTable(context.Background(), createTableRequest)
 	if err != nil {
 		t.Errorf("CreateTable() error = %v", err)
 	}
@@ -179,7 +188,7 @@ func TestCoordinatorServerImpl_GetLine(t *testing.T) {
 	}
 	defer cancelServer()
 
-	_, err = cClient.CreateTable(context.Background(), table)
+	_, err = cClient.CreateTable(context.Background(), createTableRequest)
 	if err != nil {
 		t.Errorf("CreateTable() error = %v", err)
 	}
@@ -225,7 +234,7 @@ func TestCoordinatorServerImpl_InsertLine(t *testing.T) {
 
 	defer cancelServer()
 
-	resp, err := cClient.CreateTable(context.Background(), table)
+	resp, err := cClient.CreateTable(context.Background(), createTableRequest)
 	if err != nil {
 		t.Errorf("CreateTable() error = %v", err)
 	}
@@ -259,7 +268,7 @@ func TestCoordinatorServerImpl_UpdateLine(t *testing.T) {
 	}
 	defer cancelServer()
 
-	resp, err := cClient.CreateTable(context.Background(), table)
+	resp, err := cClient.CreateTable(context.Background(), createTableRequest)
 	if err != nil {
 		t.Errorf("CreateTable() error = %v", err)
 	}

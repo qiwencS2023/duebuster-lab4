@@ -4,12 +4,23 @@ option go_package = "./main";
 import "entities.proto";
 
 service CoordinatorService {
-  rpc CreateTable (Table) returns (CoordinatorResponse) {}
+  rpc RegisterStorageServer (RegisterRequest) returns (CoordinatorResponse) {}
+  rpc CreateTable (CreateTableRequest) returns (CoordinatorResponse) {}
   rpc DeleteTable (Table) returns (CoordinatorResponse) {}
   rpc InsertLine (Line) returns (CoordinatorResponse) {}
   rpc DeleteLine (Line) returns (CoordinatorResponse) {}
   rpc GetLine (Line) returns (Line) {}
   rpc UpdateLine (Line) returns (CoordinatorResponse) {}
+}
+
+
+message RegisterRequest {
+  string storage_addr = 1;
+}
+
+message CreateTableRequest {
+  Table table = 1;
+  int64 partition_count = 2;
 }
 
 message CoordinatorResponse {

@@ -50,7 +50,7 @@ func TestStorageServerImpl_Register(t *testing.T) {
 }
 
 func startStorageServer(port string) (StorageClient, context.CancelFunc, error) {
-	os.Args = []string{"storage", port}
+	os.Args = []string{"storage -p ", port}
 
 	// run the server with a context
 	ctx, cancel := context.WithCancel(context.Background())

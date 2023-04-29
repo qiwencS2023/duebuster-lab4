@@ -4,7 +4,7 @@ option go_package = "./main";
 import "entities.proto";
 
 service Storage {
-  rpc Register (Database) returns (StorageResponse) {};
+  rpc Register (Database) returns (StorageResponse) {};  // for debug use only!
   rpc CreateTable (Table) returns (StorageResponse) {};
   rpc DeleteTable (Table) returns (StorageResponse) {};
   rpc InsertLine (Line) returns (StorageResponse) {};
@@ -12,6 +12,7 @@ service Storage {
   rpc UpdateLine (Line) returns (StorageResponse) {};
   rpc GetLine (GetLineRequest) returns (Line) {};
 }
+
 
 message GetLineRequest {
   Table table = 1;
