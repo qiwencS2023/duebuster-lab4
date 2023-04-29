@@ -30,7 +30,7 @@ var table = &Table{
 
 func TestStorageServerImpl_Register(t *testing.T) {
 	// mock command line arguments
-	cancelServer, err, client := mockGrpcEnv()
+	client, cancelServer, err := startStorageServer("")
 
 	// call register
 	_, err = client.Register(context.Background(), &Database{
@@ -49,8 +49,8 @@ func TestStorageServerImpl_Register(t *testing.T) {
 	cancelServer()
 }
 
-func mockGrpcEnv() (context.CancelFunc, error, StorageClient) {
-	os.Args = []string{"storage", "9000"}
+func startStorageServer(port string) (StorageClient, context.CancelFunc, error) {
+	os.Args = []string{"storage", port}
 
 	// run the server with a context
 	ctx, cancel := context.WithCancel(context.Background())
@@ -61,7 +61,7 @@ func mockGrpcEnv() (context.CancelFunc, error, StorageClient) {
 	}(ctx)
 
 	// create a client
-	conn, err := grpc.Dial("localhost:9000", grpc.WithInsecure())
+	conn, err := grpc.Dial("localhost"+port, grpc.WithInsecure())
 	if err != nil {
 		panic(err)
 	}
@@ -76,11 +76,11 @@ func mockGrpcEnv() (context.CancelFunc, error, StorageClient) {
 
 	// create a storage client
 	client := NewStorageClient(conn)
-	return cancel, err, client
+	return client, cancel, err
 }
 
 func TestStorageServerImpl_CreateTable(t *testing.T) {
-	cancelServer, err, client := mockGrpcEnv()
+	client, cancelServer, err := startStorageServer("9000")
 	_, err = client.Register(context.Background(), database)
 	if err != nil {
 		t.Error(err)
@@ -98,7 +98,7 @@ func TestStorageServerImpl_CreateTable(t *testing.T) {
 }
 
 func TestStorageServerImpl_DeleteTable(t *testing.T) {
-	cancelServer, err, client := mockGrpcEnv()
+	client, cancelServer, err := startStorageServer("9000")
 	_, err = client.Register(context.Background(), database)
 	if err != nil {
 		t.Error(err)
@@ -123,7 +123,7 @@ func TestStorageServerImpl_DeleteTable(t *testing.T) {
 }
 
 func TestStorageServerImpl_InsertLine(t *testing.T) {
-	cancelServer, err, client := mockGrpcEnv()
+	client, cancelServer, err := startStorageServer("9000")
 	_, err = client.Register(context.Background(), database)
 	if err != nil {
 		t.Error(err)
@@ -151,7 +151,7 @@ func TestStorageServerImpl_InsertLine(t *testing.T) {
 }
 
 func TestStorageServerImpl_DeleteLine(t *testing.T) {
-	cancelServer, err, client := mockGrpcEnv()
+	client, cancelServer, err := startStorageServer("9000")
 	_, err = client.Register(context.Background(), database)
 	if err != nil {
 		t.Error(err)
@@ -200,7 +200,7 @@ func TestStorageServerImpl_DeleteLine(t *testing.T) {
 }
 
 func TestStorageServerImpl_UpdateLine(t *testing.T) {
-	cancelServer, err, client := mockGrpcEnv()
+	client, cancelServer, err := startStorageServer("9000")
 	_, err = client.Register(context.Background(), database)
 	if err != nil {
 		t.Error(err)
@@ -250,7 +250,7 @@ func TestStorageServerImpl_UpdateLine(t *testing.T) {
 }
 
 func TestStorageServerImpl_GetLine(t *testing.T) {
-	cancelServer, err, client := mockGrpcEnv()
+	client, cancelServer, err := startStorageServer("9000")
 	_, err = client.Register(context.Background(), database)
 	if err != nil {
 		t.Error(err)
