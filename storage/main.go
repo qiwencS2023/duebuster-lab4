@@ -56,6 +56,23 @@ func main() {
 	grpcServer := grpc.NewServer()
 	RegisterStorageServer(grpcServer, server)
 
+	// if all arguments are set, register database
+	if command.Database != "" && command.DataPort != 0 && command.Host != "" && command.User != "" && command.Password != "" {
+		// register database
+		_, err := server.Register(nil, &Database{
+			Type:     "mysql",
+			Host:     command.Host,
+			Port:     int32(command.DataPort),
+			Database: command.Database,
+			User:     command.User,
+			Password: command.Password,
+		})
+
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	go func() {
 		lis, err := net.Listen("tcp", fmt.Sprintf(":%d", command.Port))
 		if err != nil {
