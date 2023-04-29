@@ -1,6 +1,8 @@
 syntax = "proto3";
 option go_package = "./main";
 
+import "entities.proto";
+
 service Storage {
   rpc Register (Database) returns (StorageResponse) {};
   rpc CreateTable (Table) returns (StorageResponse) {};
@@ -32,16 +34,4 @@ message Database {
   string database = 4;
   string user = 5;
   string password = 6;
-}
-
-message Table {
-  string name = 1;
-  map<string, string> columns = 2;
-  string primary_key = 3;
-}
-
-message Line {
-  string table = 1;
-  string primary_key = 2;
-  map<string, string> line = 3;
 }
