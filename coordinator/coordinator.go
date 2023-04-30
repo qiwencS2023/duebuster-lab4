@@ -2,9 +2,11 @@ package main
 
 import (
 	context "context"
-	"google.golang.org/grpc"
+	"errors"
 	"math/rand"
 	"time"
+
+	"google.golang.org/grpc"
 )
 
 type StorageServerImpl struct {
@@ -112,23 +114,124 @@ func (c *CoordinatorServerImpl) DeleteTable(ctx context.Context, table *Table) (
 }
 
 func (c *CoordinatorServerImpl) InsertLine(ctx context.Context, line *Line) (*CoordinatorResponse, error) {
-	//TODO implement me
-	panic("implement me")
+	// find the table partition
+	tableName := line.Table
+	CoordinatorTable := c.CoordinatorTableMap[tableName]
+
+	// select the partition with lower count
+	var minRowCountTablePartition TablePartition
+	var partitionIdx int
+	for idx, tablePartition := range CoordinatorTable.TablePartitions {
+		if idx == 0 {
+			minRowCountTablePartition = tablePartition
+			partitionIdx = idx
+		} else {
+			if tablePartition.RowCount < minRowCountTablePartition.RowCount {
+				minRowCountTablePartition = tablePartition
+				partitionIdx = idx
+			}
+		}
+	}
+
+	// insert the line into the partition
+	paritionLine := &Line{
+		Table: minRowCountTablePartition.Name,
+		PrimaryKey: line.PrimaryKey,
+		Line: line.Line,
+	}
+	minRowCountTablePartition.StorageServer.InsertLine(context.Background(), paritionLine)
+
+	// insert the line into the replication
+	replicationLine := &Line{
+		Table: CoordinatorTable.ReplicationPartitions[partitionIdx].Name,
+		PrimaryKey: line.PrimaryKey,
+		Line: line.Line,
+	}
+	CoordinatorTable.ReplicationPartitions[partitionIdx].StorageServer.InsertLine(context.Background(), replicationLine);
+
+	// update the row count
+	CoordinatorTable.TablePartitions[partitionIdx].RowCount++
+	CoordinatorTable.ReplicationPartitions[partitionIdx].RowCount++
+
+	return &CoordinatorResponse{
+		Message: "success",
+	}, nil
+
 }
 
 func (c *CoordinatorServerImpl) DeleteLine(ctx context.Context, line *Line) (*CoordinatorResponse, error) {
-	//TODO implement me
-	panic("implement me")
+	tableName := line.Table
+	CoordinatorTable := c.CoordinatorTableMap[tableName]
+
+	// delete the line from all the partition
+	for _, tablePartition := range CoordinatorTable.TablePartitions {
+		request := &Line{
+			Table: tablePartition.Name,
+			PrimaryKey: line.PrimaryKey,
+		}
+		tablePartition.StorageServer.DeleteLine(context.Background(), request)
+	}
+
+	for _, tablePartition := range CoordinatorTable.ReplicationPartitions {
+		request := &Line{
+			Table: tablePartition.Name,
+			PrimaryKey: line.PrimaryKey,
+		}
+		tablePartition.StorageServer.DeleteLine(context.Background(), request)
+	}
+
+	return &CoordinatorResponse{
+		Message: "success",
+	}, nil
+
 }
 
-func (c *CoordinatorServerImpl) GetLine(ctx context.Context, line *Line) (*Line, error) {
-	//TODO implement me
-	panic("implement me")
+func (c *CoordinatorServerImpl) GetLine(ctx context.Context, lineRequest *GetLineRequest) (*Line, error) {
+	// find the table partition
+	tableName := lineRequest.Table.Name
+	CoordinatorTable := c.CoordinatorTableMap[tableName]
+
+	// send the query to all the partitions
+	for _, tablePartition := range CoordinatorTable.TablePartitions {
+		request := &GetLineRequest{
+			Table : &Table{
+				Name: tablePartition.Name,
+			},
+			PrimaryKeyValue: lineRequest.PrimaryKeyValue,
+		}
+		line, err := tablePartition.StorageServer.GetLine(context.Background(), request)
+		if err == nil {
+			return line, nil
+		}
+	}
+
+	return nil, errors.New("line not found")
 }
 
 func (c *CoordinatorServerImpl) UpdateLine(ctx context.Context, line *Line) (*CoordinatorResponse, error) {
-	//TODO implement me
-	panic("implement me")
+	tableName := line.Table
+	CoordinatorTable := c.CoordinatorTableMap[tableName]
+
+	// delete the line from all the partition
+	for _, tablePartition := range CoordinatorTable.TablePartitions {
+		request := &Line{
+			Table: tablePartition.Name,
+			PrimaryKey: line.PrimaryKey,
+		}
+		tablePartition.StorageServer.UpdateLine(context.Background(), request)
+	}
+
+	for _, tablePartition := range CoordinatorTable.ReplicationPartitions {
+		request := &Line{
+			Table: tablePartition.Name,
+			PrimaryKey: line.PrimaryKey,
+		}
+		tablePartition.StorageServer.UpdateLine(context.Background(), request)
+	}
+
+	return &CoordinatorResponse{
+		Message: "success",
+	}, nil
 }
 
 func (c *CoordinatorServerImpl) mustEmbedUnimplementedCoordinatorServiceServer() {
@@ -136,10 +239,15 @@ func (c *CoordinatorServerImpl) mustEmbedUnimplementedCoordinatorServiceServer()
 	panic("implement me")
 }
 
-func (c *CoordinatorServerImpl) RegisterStorageServer() {
-	// read from config file
-	// implement me
-	panic("implement me")
+func (c *CoordinatorServerImpl) RegisterStorageServer(request *RegisterRequest) {
+
+	conn, err := grpc.Dial(request.StorageAddr, grpc.WithInsecure())
+	if err != nil {
+		panic(err)
+	}
+
+	storageServer := &StorageServerImpl{NewStorageClient(conn), nil}
+	c.SSM.storageServers[request.StorageAddr] = storageServer
 }
 
 // randomly get 4 storage servers

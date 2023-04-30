@@ -13,3 +13,8 @@ message Line {
   string primary_key = 2;
   map<string, string> line = 3;
 }
+
+message GetLineRequest {
+  Table table = 1;
+  string primary_key_value = 2;
+}

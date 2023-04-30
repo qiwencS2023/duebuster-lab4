@@ -9,7 +9,7 @@ service CoordinatorService {
   rpc DeleteTable (Table) returns (CoordinatorResponse) {}
   rpc InsertLine (Line) returns (CoordinatorResponse) {}
   rpc DeleteLine (Line) returns (CoordinatorResponse) {}
-  rpc GetLine (Line) returns (Line) {}
+  rpc GetLine (GetLine) returns (GetLineRequest) {}
   rpc UpdateLine (Line) returns (CoordinatorResponse) {}
 }
 
