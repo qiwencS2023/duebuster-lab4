@@ -90,7 +90,10 @@ func (c *CoordinatorServerImpl) CreateTable(ctx context.Context, request *Create
 			Columns:    table.Columns,
 			PrimaryKey: table.PrimaryKey,
 		}
-		TablePartition.StorageServer.CreateTable(context.Background(), table)
+		_, err := TablePartition.StorageServer.CreateTable(context.Background(), table)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// put ct to the coordinator table map
@@ -115,7 +118,10 @@ func (c *CoordinatorServerImpl) DeleteTable(ctx context.Context, table *Table) (
 			PrimaryKey: "",
 		}
 		log.Printf("[coordinator] deleting table partition %v\n", tablePartition)
-		tablePartition.StorageServer.DeleteTable(context.Background(), table)
+		_, err := tablePartition.StorageServer.DeleteTable(context.Background(), table)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// delete the underlying replication partitions
@@ -123,7 +129,10 @@ func (c *CoordinatorServerImpl) DeleteTable(ctx context.Context, table *Table) (
 		table := &Table{
 			Name: tablePartition.Name,
 		}
-		tablePartition.StorageServer.DeleteTable(context.Background(), table)
+		_, err := tablePartition.StorageServer.DeleteTable(context.Background(), table)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	delete(c.CoordinatorTableMap, tableName)
@@ -158,7 +167,10 @@ func (c *CoordinatorServerImpl) InsertLine(ctx context.Context, line *Line) (*Co
 		PrimaryKey: line.PrimaryKey,
 		Line:       line.Line,
 	}
-	minRowCountTablePartition.StorageServer.InsertLine(context.Background(), paritionLine)
+	_, err := minRowCountTablePartition.StorageServer.InsertLine(context.Background(), paritionLine)
+	if err != nil {
+		return nil, err
+	}
 
 	// insert the line into the replication
 	replicationLine := &Line{
@@ -166,7 +178,10 @@ func (c *CoordinatorServerImpl) InsertLine(ctx context.Context, line *Line) (*Co
 		PrimaryKey: line.PrimaryKey,
 		Line:       line.Line,
 	}
-	CoordinatorTable.ReplicationPartitions[partitionIdx].StorageServer.InsertLine(context.Background(), replicationLine)
+	_, err = CoordinatorTable.ReplicationPartitions[partitionIdx].StorageServer.InsertLine(context.Background(), replicationLine)
+	if err != nil {
+		return nil, err
+	}
 
 	// update the row count
 	CoordinatorTable.TablePartitions[partitionIdx].RowCount++
@@ -190,7 +205,10 @@ func (c *CoordinatorServerImpl) DeleteLine(ctx context.Context, line *Line) (*Co
 			Line:       line.Line,
 		}
 		log.Printf("[coordinator] deleting line from table partition %v\n", tablePartition)
-		tablePartition.StorageServer.DeleteLine(context.Background(), request)
+		_, err := tablePartition.StorageServer.DeleteLine(context.Background(), request)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	for _, tablePartition := range CoordinatorTable.ReplicationPartitions {
@@ -199,7 +217,10 @@ func (c *CoordinatorServerImpl) DeleteLine(ctx context.Context, line *Line) (*Co
 			PrimaryKey: line.PrimaryKey,
 			Line:       line.Line,
 		}
-		tablePartition.StorageServer.DeleteLine(context.Background(), request)
+		_, err := tablePartition.StorageServer.DeleteLine(context.Background(), request)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &CoordinatorResponse{
@@ -242,7 +263,10 @@ func (c *CoordinatorServerImpl) UpdateLine(ctx context.Context, line *Line) (*Co
 			PrimaryKey: line.PrimaryKey,
 			Line:       line.Line,
 		}
-		tablePartition.StorageServer.UpdateLine(context.Background(), request)
+		_, err := tablePartition.StorageServer.UpdateLine(context.Background(), request)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	for _, tablePartition := range CoordinatorTable.ReplicationPartitions {
@@ -251,7 +275,10 @@ func (c *CoordinatorServerImpl) UpdateLine(ctx context.Context, line *Line) (*Co
 			PrimaryKey: line.PrimaryKey,
 			Line:       line.Line,
 		}
-		tablePartition.StorageServer.UpdateLine(context.Background(), request)
+		_, err := tablePartition.StorageServer.UpdateLine(context.Background(), request)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &CoordinatorResponse{
