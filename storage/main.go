@@ -79,6 +79,8 @@ func main() {
 			log.Fatalf("failed to listen: %v", err)
 		}
 
+		fmt.Printf("storage[storage] Listening on port %d\n\tregistration info: %s:%d %s %s %s\n", command.Port, command.Host, command.DataPort, command.Database, command.User, command.Password)
+
 		// handle ctrl + c
 		go func() {
 			c := make(chan os.Signal, 1)
@@ -92,4 +94,8 @@ func main() {
 		log.Fatal(grpcServer.Serve(lis))
 	}()
 
+	// wait for ctrl + c
+	sigint := make(chan os.Signal, 1)
+	signal.Notify(sigint, os.Interrupt)
+	<-sigint
 }

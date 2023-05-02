@@ -24,8 +24,7 @@ func main() {
 	// create a coordinator server
 	coordinatorServer := NewCoordinatorServerImpl(storagePorts...)
 
-	// create a listener on the coordinator port
-	lis, err := net.Listen("tcp", ":"+cPort)
+	lis, err := net.Listen("tcp", "localhost:"+cPort)
 	if err != nil {
 		panic(err)
 	}

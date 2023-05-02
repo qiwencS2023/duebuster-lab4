@@ -39,10 +39,13 @@ func (s *StorageServerImpl) Register(ctx context.Context, db *Database) (*Storag
 		return nil, err
 	}
 
+	fmt.Printf("[storage] registered database, db: %v with type %s\n", db, db.Type)
+
 	return &StorageResponse{}, nil
 }
 
 func (s *StorageServerImpl) CreateTable(ctx context.Context, table *Table) (*StorageResponse, error) {
+	fmt.Printf("[storage] creating table, table: %v\n", table)
 	if err := s.dbConnector.CreateTable(table); err != nil {
 		return nil, err
 	}
@@ -51,6 +54,7 @@ func (s *StorageServerImpl) CreateTable(ctx context.Context, table *Table) (*Sto
 }
 
 func (s *StorageServerImpl) DeleteTable(ctx context.Context, table *Table) (*StorageResponse, error) {
+	fmt.Printf("[storage] deleting table, table: %v\n", table)
 	if err := s.dbConnector.DeleteTable(table); err != nil {
 		return nil, err
 	}
@@ -59,6 +63,7 @@ func (s *StorageServerImpl) DeleteTable(ctx context.Context, table *Table) (*Sto
 }
 
 func (s *StorageServerImpl) InsertLine(ctx context.Context, line *Line) (*StorageResponse, error) {
+	fmt.Printf("[storage] inserting line, line: %v\n", line)
 	if err := s.dbConnector.InsertLine(line); err != nil {
 		return nil, err
 	}
@@ -67,6 +72,7 @@ func (s *StorageServerImpl) InsertLine(ctx context.Context, line *Line) (*Storag
 }
 
 func (s *StorageServerImpl) DeleteLine(ctx context.Context, line *Line) (*StorageResponse, error) {
+	fmt.Printf("[storage] deleting line, line: %v\n", line)
 	if err := s.dbConnector.DeleteLine(line); err != nil {
 		return nil, err
 	}
@@ -75,6 +81,7 @@ func (s *StorageServerImpl) DeleteLine(ctx context.Context, line *Line) (*Storag
 }
 
 func (s *StorageServerImpl) UpdateLine(ctx context.Context, line *Line) (*StorageResponse, error) {
+	fmt.Printf("[storage] updating line, line: %v\n", line)
 	if err := s.dbConnector.UpdateLine(line); err != nil {
 		return nil, err
 	}
@@ -83,6 +90,7 @@ func (s *StorageServerImpl) UpdateLine(ctx context.Context, line *Line) (*Storag
 }
 
 func (s *StorageServerImpl) GetLine(ctx context.Context, request *GetLineRequest) (*Line, error) {
+	fmt.Printf("[storage] getting line, request: %v\n", request)
 	if line, err := s.dbConnector.GetLine(request); err != nil {
 		return nil, err
 	} else {

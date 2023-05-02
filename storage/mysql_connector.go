@@ -17,6 +17,7 @@ func (c *MySQLConnector) GetLine(request *GetLineRequest) (*Line, error) {
 
 	// Create SQL command
 	cmd := fmt.Sprintf("SELECT * FROM %s WHERE %s = %s", table.Name, table.PrimaryKey, pk)
+	log.Printf("[storage] cmd: %s\n", cmd)
 
 	// Execute SQL command
 	rows, err := c.db.Query(cmd)
@@ -110,6 +111,8 @@ func (connector *MySQLConnector) CreateTable(table *Table) error {
 	// Create SQL command
 	cmd := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (%s, PRIMARY KEY (%s))", table.Name, columns, table.PrimaryKey)
 
+	fmt.Printf("[mysql_connector.go] cmd: %s\n", cmd)
+
 	// Execute SQL command
 	if _, err := connector.db.Exec(cmd); err != nil {
 		return err
@@ -158,6 +161,7 @@ func (connector *MySQLConnector) UpdateLine(line *Line) error {
 	updates = updates[:len(updates)-1] // Remove trailing comma
 
 	cmd := fmt.Sprintf("UPDATE %s SET %s WHERE %s = '%s'", line.Table, updates, line.PrimaryKey, line.Line[line.PrimaryKey])
+	log.Printf("[mysql_connector.go] cmd: %s\n", cmd)
 	if _, err := connector.db.Exec(cmd); err != nil {
 		return err
 	}

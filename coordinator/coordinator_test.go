@@ -2,10 +2,14 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"google.golang.org/grpc"
+	"log"
 	"os"
+	"os/exec"
 	"strconv"
 	"testing"
+	"time"
 )
 
 var table = &Table{
@@ -23,39 +27,67 @@ var createTableRequest = &CreateTableRequest{
 }
 
 func startStorageServer(port string) (StorageClient, context.CancelFunc, error) {
-	os.Args = []string{"storage", port}
+	target := "../dist/storage -p " + port
 
-	// run the server with a context
-	ctx, cancel := context.WithCancel(context.Background())
-	go func(ctx context.Context) {
-		go main()
-		// listen for ctx done
-		<-ctx.Done()
-	}(ctx)
+	stopChan := make(chan bool)
+	go func() {
+		cmd := exec.CommandContext(context.Background(), "sh", "-c", target)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		done := make(chan error, 1)
+
+		go func() {
+			done <- cmd.Run()
+		}()
+
+		select {
+		case <-stopChan:
+			fmt.Println("[subroutine] Stopping storage server on port " + port)
+			if err := cmd.Process.Kill(); err != nil {
+				fmt.Println("failed to kill process: ", err)
+			}
+		case err := <-done:
+			log.Printf("[subroutine] process done with error = %v", err)
+			os.Exit(0)
+		}
+	}()
+
+	time.Sleep(200 * time.Millisecond)
 
 	// create a client
-	conn, err := grpc.Dial("localhost"+port, grpc.WithInsecure())
+	conn, err := grpc.Dial("localhost:"+port, grpc.WithInsecure())
 	if err != nil {
 		panic(err)
 	}
 
-	// create a sub context
-
-	// close connection when context is done
-	go func(ctx context.Context) {
-		<-ctx.Done()
-		conn.Close()
-	}(ctx)
-
 	// create a storage client
 	client := NewStorageClient(conn)
+
+	// register database
+	_, err = client.Register(context.Background(), &Database{
+		Type:     "mysql",
+		Host:     "localhost",
+		Port:     3306,
+		Database: "test",
+		Password: "test",
+		User:     "test",
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Started storage server on port %s\n", port)
+	cancel := func() {
+		fmt.Printf("[startStorageServer] Stopping storage server on port %s\n", port)
+		close(stopChan)
+	}
 	return client, cancel, err
 }
 
 func mockStorageCluster(numStorage int) ([]string, context.CancelFunc, error) {
 	storageServers := make([]*StorageServerImpl, numStorage)
 	for i := 0; i < numStorage; i++ {
-		port := strconv.Itoa(9000 + i)
+		port := strconv.Itoa(9001 + i)
 		client, cancelServer, err := startStorageServer(port)
 		if err != nil {
 			panic(err)
@@ -67,7 +99,7 @@ func mockStorageCluster(numStorage int) ([]string, context.CancelFunc, error) {
 	}
 	ports := make([]string, numStorage)
 	for i := 0; i < numStorage; i++ {
-		ports[i] = strconv.Itoa(9000 + i)
+		ports[i] = strconv.Itoa(9001 + i)
 	}
 	return ports, func() {
 		for _, server := range storageServers {
@@ -77,7 +109,7 @@ func mockStorageCluster(numStorage int) ([]string, context.CancelFunc, error) {
 }
 
 func mockCoordinator(port string, storagePorts []string) (CoordinatorServiceClient, context.CancelFunc, error) {
-	os.Args = []string{"", "-p", "localhost:" + port, "-s"}
+	os.Args = []string{"", "-p", port, "-s"}
 	os.Args = append(os.Args, storagePorts...)
 
 	// run the server with a context
@@ -109,15 +141,12 @@ func mockCoordinator(port string, storagePorts []string) (CoordinatorServiceClie
 
 func TestCoordinatorServerImpl_CreateTable(t *testing.T) {
 	// mock storage cluster
-	ports, cancelStorage, err := mockStorageCluster(3)
-	defer cancelStorage()
-
+	ports, cancelStorage, err := mockStorageCluster(4)
 	// mock coordinator
 	cClient, cancelServer, err := mockCoordinator("8999", ports)
 	if err != nil {
 		t.Error(err)
 	}
-	defer cancelServer()
 
 	resp, err := cClient.CreateTable(context.Background(), &CreateTableRequest{
 		Table:          table,
@@ -129,11 +158,14 @@ func TestCoordinatorServerImpl_CreateTable(t *testing.T) {
 	}
 
 	t.Logf("response: %v", resp)
+	cancelServer()
+	cancelStorage()
+
 }
 
 func TestCoordinatorServerImpl_DeleteLine(t *testing.T) {
 	// mock storage cluster
-	ports, cancelStorage, err := mockStorageCluster(3)
+	ports, cancelStorage, err := mockStorageCluster(4)
 	defer cancelStorage()
 
 	// mock coordinator
@@ -148,12 +180,35 @@ func TestCoordinatorServerImpl_DeleteLine(t *testing.T) {
 		t.Errorf("CreateTable() error = %v", err)
 	}
 
+	line := &Line{
+		Table: table.Name,
+		Line: map[string]string{
+			"id":          "1",
+			"test_column": "test_1",
+		},
+	}
+	resp, err = cClient.InsertLine(context.Background(), line)
+	if err != nil {
+		t.Errorf("InsertLine() error = %v", err)
+	}
+
+	resp, err = cClient.DeleteLine(context.Background(), &Line{
+		PrimaryKey: "id",
+		Line: map[string]string{
+			"id": "1",
+		},
+		Table: table.Name,
+	})
+	if err != nil {
+		t.Errorf("DeleteLine() error = %v", err)
+	}
+
 	t.Logf("response: %v", resp)
 }
 
 func TestCoordinatorServerImpl_DeleteTable(t *testing.T) {
 	// mock storage cluster
-	ports, cancelStorage, err := mockStorageCluster(3)
+	ports, cancelStorage, err := mockStorageCluster(4)
 	defer cancelStorage()
 
 	// mock coordinator
@@ -178,7 +233,7 @@ func TestCoordinatorServerImpl_DeleteTable(t *testing.T) {
 
 func TestCoordinatorServerImpl_GetLine(t *testing.T) {
 	// mock storage cluster
-	ports, cancelStorage, err := mockStorageCluster(3)
+	ports, cancelStorage, err := mockStorageCluster(4)
 	defer cancelStorage()
 
 	// mock coordinator
@@ -197,8 +252,8 @@ func TestCoordinatorServerImpl_GetLine(t *testing.T) {
 	line := &Line{
 		Table: table.Name,
 		Line: map[string]string{
-			"id":   "1",
-			"name": "test",
+			"id":          "1",
+			"test_column": "test",
 		},
 	}
 	_, err = cClient.InsertLine(context.Background(), line)
@@ -207,11 +262,12 @@ func TestCoordinatorServerImpl_GetLine(t *testing.T) {
 	}
 
 	// get line
-	newLine, err := cClient.GetLine(context.Background(), &Line{
-		Table: table.Name,
-		Line: map[string]string{
-			"id": "1",
+	newLine, err := cClient.GetLine(context.Background(), &GetLineRequest{
+		Table: &Table{
+			Name:       table.Name,
+			PrimaryKey: "id",
 		},
+		PrimaryKeyValue: "1",
 	})
 	if err != nil {
 		t.Errorf("GetLine() error = %v", err)
@@ -222,7 +278,7 @@ func TestCoordinatorServerImpl_GetLine(t *testing.T) {
 
 func TestCoordinatorServerImpl_InsertLine(t *testing.T) {
 	// mock storage cluster
-	ports, cancelStorage, err := mockStorageCluster(3)
+	ports, cancelStorage, err := mockStorageCluster(4)
 
 	defer cancelStorage()
 
@@ -240,16 +296,18 @@ func TestCoordinatorServerImpl_InsertLine(t *testing.T) {
 	}
 
 	// insert line
-	line := &Line{
-		Table: table.Name,
-		Line: map[string]string{
-			"id":   "1",
-			"name": "test",
-		},
-	}
-	resp, err = cClient.InsertLine(context.Background(), line)
-	if err != nil {
-		t.Errorf("InsertLine() error = %v", err)
+	for i := 0; i < 100; i++ {
+		line := &Line{
+			Table: table.Name,
+			Line: map[string]string{
+				"id":          fmt.Sprintf("%d", i),
+				"test_column": "test_" + fmt.Sprintf("%d", i),
+			},
+		}
+		resp, err = cClient.InsertLine(context.Background(), line)
+		if err != nil {
+			t.Errorf("InsertLine() error = %v", err)
+		}
 	}
 
 	t.Logf("response: %v", resp)
@@ -258,7 +316,7 @@ func TestCoordinatorServerImpl_InsertLine(t *testing.T) {
 
 func TestCoordinatorServerImpl_UpdateLine(t *testing.T) {
 	// mock storage cluster
-	ports, cancelStorage, err := mockStorageCluster(3)
+	ports, cancelStorage, err := mockStorageCluster(4)
 	defer cancelStorage()
 
 	// mock coordinator
@@ -277,8 +335,8 @@ func TestCoordinatorServerImpl_UpdateLine(t *testing.T) {
 	line := &Line{
 		Table: table.Name,
 		Line: map[string]string{
-			"id":   "1",
-			"name": "test",
+			"id":          "1",
+			"test_column": "test",
 		},
 	}
 	resp, err = cClient.InsertLine(context.Background(), line)
@@ -290,9 +348,10 @@ func TestCoordinatorServerImpl_UpdateLine(t *testing.T) {
 	resp, err = cClient.UpdateLine(context.Background(), &Line{
 		Table: table.Name,
 		Line: map[string]string{
-			"id":   "1",
-			"name": "test2",
+			"id":          "1",
+			"test_column": "test2",
 		},
+		PrimaryKey: "id",
 	})
 	if err != nil {
 		t.Errorf("UpdateLine() error = %v", err)

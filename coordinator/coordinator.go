@@ -3,7 +3,10 @@ package main
 import (
 	context "context"
 	"errors"
+	"fmt"
+	"log"
 	"math/rand"
+	"strconv"
 	"time"
 
 	"google.golang.org/grpc"
@@ -25,8 +28,8 @@ type TablePartition struct {
 }
 
 type CoordinatorTable struct {
-	TablePartitions       []TablePartition
-	ReplicationPartitions []TablePartition
+	TablePartitions       []*TablePartition
+	ReplicationPartitions []*TablePartition
 }
 
 type CoordinatorServerImpl struct {
@@ -35,6 +38,8 @@ type CoordinatorServerImpl struct {
 }
 
 func (c *CoordinatorServerImpl) CreateTable(ctx context.Context, request *CreateTableRequest) (*CoordinatorResponse, error) {
+	fmt.Println("[Coordinator] Received CreateTable request: ", request)
+
 	table := request.Table
 	partitionCount := int(request.PartitionCount)
 	tableName := table.Name
@@ -43,43 +48,54 @@ func (c *CoordinatorServerImpl) CreateTable(ctx context.Context, request *Create
 	// a new table will be paritioned into 2 parts and replicate 1 times.
 	ct := &CoordinatorTable{}
 	// we do a default replication factor of 2
-	ct.TablePartitions = make([]TablePartition, partitionCount)
-	ct.ReplicationPartitions = make([]TablePartition, partitionCount)
+	ct.TablePartitions = []*TablePartition{}
+	ct.ReplicationPartitions = []*TablePartition{}
 
 	c.CoordinatorTableMap[tableName] = ct
 
 	// randomly assign storage servers to the table partitions
 	paritions := RandomPartitions(c.SSM.storageServers, partitionCount*2)
 
+	fmt.Printf("[Coordinator] Randomly assigned partitions: %v\n", paritions)
+
 	for i := 0; i < partitionCount; i++ {
 		TablePartition := TablePartition{
 			StorageServer: paritions[i],
-			Name:          tableName + "_partition_" + string(i),
+			Name:          tableName + "_partition_" + strconv.Itoa(i),
 			RowCount:      0,
 		}
-		ct.TablePartitions = append(ct.TablePartitions, TablePartition)
+		ct.TablePartitions = append(ct.TablePartitions, &TablePartition)
 		// create actual table in storage server
 		table := &Table{
-			Name:    TablePartition.Name,
-			Columns: table.Columns,
+			Name:       TablePartition.Name,
+			Columns:    table.Columns,
+			PrimaryKey: table.PrimaryKey,
 		}
-		TablePartition.StorageServer.CreateTable(context.Background(), table)
+		_, err := TablePartition.StorageServer.CreateTable(context.Background(), table)
+		if err != nil {
+			return nil, fmt.Errorf("[coordinator] error creating table: %v", err)
+		}
 	}
 
 	for i := 0; i < partitionCount; i++ {
 		TablePartition := TablePartition{
 			StorageServer: paritions[i+partitionCount],
-			Name:          tableName + "_partition_replica_" + string(i),
+			Name:          tableName + "_partition_replica_" + strconv.Itoa(i),
 			RowCount:      0,
 		}
-		ct.ReplicationPartitions = append(ct.ReplicationPartitions, TablePartition)
+		ct.ReplicationPartitions = append(ct.ReplicationPartitions, &TablePartition)
 		// create actual table in storage server
 		table := &Table{
-			Name:    TablePartition.Name,
-			Columns: table.Columns,
+			Name:       TablePartition.Name,
+			Columns:    table.Columns,
+			PrimaryKey: table.PrimaryKey,
 		}
 		TablePartition.StorageServer.CreateTable(context.Background(), table)
 	}
+
+	// put ct to the coordinator table map
+	c.CoordinatorTableMap[tableName] = ct
+	log.Printf("[coordinator] coordinator table map: %v\n", c.CoordinatorTableMap[tableName])
 
 	// return success
 	return &CoordinatorResponse{
@@ -94,8 +110,11 @@ func (c *CoordinatorServerImpl) DeleteTable(ctx context.Context, table *Table) (
 	// delete the underlying table partitions
 	for _, tablePartition := range CoordinatorTable.TablePartitions {
 		table := &Table{
-			Name: tablePartition.Name,
+			Name:       tablePartition.Name,
+			Columns:    map[string]string{},
+			PrimaryKey: "",
 		}
+		log.Printf("[coordinator] deleting table partition %v\n", tablePartition)
 		tablePartition.StorageServer.DeleteTable(context.Background(), table)
 	}
 
@@ -123,11 +142,11 @@ func (c *CoordinatorServerImpl) InsertLine(ctx context.Context, line *Line) (*Co
 	var partitionIdx int
 	for idx, tablePartition := range CoordinatorTable.TablePartitions {
 		if idx == 0 {
-			minRowCountTablePartition = tablePartition
+			minRowCountTablePartition = *tablePartition
 			partitionIdx = idx
 		} else {
 			if tablePartition.RowCount < minRowCountTablePartition.RowCount {
-				minRowCountTablePartition = tablePartition
+				minRowCountTablePartition = *tablePartition
 				partitionIdx = idx
 			}
 		}
@@ -168,7 +187,9 @@ func (c *CoordinatorServerImpl) DeleteLine(ctx context.Context, line *Line) (*Co
 		request := &Line{
 			Table:      tablePartition.Name,
 			PrimaryKey: line.PrimaryKey,
+			Line:       line.Line,
 		}
+		log.Printf("[coordinator] deleting line from table partition %v\n", tablePartition)
 		tablePartition.StorageServer.DeleteLine(context.Background(), request)
 	}
 
@@ -176,6 +197,7 @@ func (c *CoordinatorServerImpl) DeleteLine(ctx context.Context, line *Line) (*Co
 		request := &Line{
 			Table:      tablePartition.Name,
 			PrimaryKey: line.PrimaryKey,
+			Line:       line.Line,
 		}
 		tablePartition.StorageServer.DeleteLine(context.Background(), request)
 	}
@@ -195,7 +217,8 @@ func (c *CoordinatorServerImpl) GetLine(ctx context.Context, lineRequest *GetLin
 	for _, tablePartition := range CoordinatorTable.TablePartitions {
 		request := &GetLineRequest{
 			Table: &Table{
-				Name: tablePartition.Name,
+				Name:       tablePartition.Name,
+				PrimaryKey: lineRequest.Table.PrimaryKey,
 			},
 			PrimaryKeyValue: lineRequest.PrimaryKeyValue,
 		}
@@ -217,6 +240,7 @@ func (c *CoordinatorServerImpl) UpdateLine(ctx context.Context, line *Line) (*Co
 		request := &Line{
 			Table:      tablePartition.Name,
 			PrimaryKey: line.PrimaryKey,
+			Line:       line.Line,
 		}
 		tablePartition.StorageServer.UpdateLine(context.Background(), request)
 	}
@@ -225,6 +249,7 @@ func (c *CoordinatorServerImpl) UpdateLine(ctx context.Context, line *Line) (*Co
 		request := &Line{
 			Table:      tablePartition.Name,
 			PrimaryKey: line.PrimaryKey,
+			Line:       line.Line,
 		}
 		tablePartition.StorageServer.UpdateLine(context.Background(), request)
 	}
@@ -283,7 +308,7 @@ func NewCoordinatorServerImpl(storagePorts ...string) *CoordinatorServerImpl {
 	coordinatorServer.init()
 	for _, storagePort := range storagePorts {
 		// create client stub
-		conn, err := grpc.Dial("localhost"+storagePort, grpc.WithInsecure())
+		conn, err := grpc.Dial("localhost:"+storagePort, grpc.WithInsecure())
 		if err != nil {
 			panic(err)
 		}
