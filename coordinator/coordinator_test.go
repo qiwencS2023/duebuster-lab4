@@ -203,6 +203,12 @@ func TestCoordinatorServerImpl_DeleteLine(t *testing.T) {
 		t.Errorf("DeleteLine() error = %v", err)
 	}
 
+	// cleanup
+	resp, err = cClient.DeleteTable(context.Background(), table)
+	if err != nil {
+		t.Errorf("DeleteTable() error = %v", err)
+	}
+
 	t.Logf("response: %v", resp)
 }
 
@@ -273,6 +279,12 @@ func TestCoordinatorServerImpl_GetLine(t *testing.T) {
 		t.Errorf("GetLine() error = %v", err)
 	}
 
+	// cleanup
+	_, err = cClient.DeleteTable(context.Background(), table)
+	if err != nil {
+		t.Errorf("DeleteTable() error = %v", err)
+	}
+
 	t.Logf("response: %v", newLine)
 }
 
@@ -308,6 +320,12 @@ func TestCoordinatorServerImpl_InsertLine(t *testing.T) {
 		if err != nil {
 			t.Errorf("InsertLine() error = %v", err)
 		}
+	}
+
+	// cleanup
+	resp, err = cClient.DeleteTable(context.Background(), table)
+	if err != nil {
+		t.Errorf("DeleteTable() error = %v", err)
 	}
 
 	t.Logf("response: %v", resp)
@@ -355,6 +373,12 @@ func TestCoordinatorServerImpl_UpdateLine(t *testing.T) {
 	})
 	if err != nil {
 		t.Errorf("UpdateLine() error = %v", err)
+	}
+
+	// cleanup
+	resp, err = cClient.DeleteTable(context.Background(), table)
+	if err != nil {
+		t.Errorf("DeleteTable() error = %v", err)
 	}
 
 	t.Logf("response: %v", resp)
