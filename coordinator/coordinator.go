@@ -30,9 +30,11 @@ type TablePartition struct {
 type CoordinatorTable struct {
 	TablePartitions       []*TablePartition
 	ReplicationPartitions []*TablePartition
+	PrimaryKey            string
 }
 
 type CoordinatorServerImpl struct {
+	CoordinatorCache
 	SSM                 StorageServerMap
 	CoordinatorTableMap map[string]*CoordinatorTable
 }
@@ -47,9 +49,11 @@ func (c *CoordinatorServerImpl) CreateTable(ctx context.Context, request *Create
 	// create a table in coordinator's view
 	// a new table will be paritioned into 2 parts and replicate 1 times.
 	ct := &CoordinatorTable{}
+
 	// we do a default replication factor of 2
 	ct.TablePartitions = []*TablePartition{}
 	ct.ReplicationPartitions = []*TablePartition{}
+	ct.PrimaryKey = table.PrimaryKey
 
 	c.CoordinatorTableMap[tableName] = ct
 
@@ -65,12 +69,14 @@ func (c *CoordinatorServerImpl) CreateTable(ctx context.Context, request *Create
 			RowCount:      0,
 		}
 		ct.TablePartitions = append(ct.TablePartitions, &TablePartition)
+
 		// create actual table in storage server
 		table := &Table{
 			Name:       TablePartition.Name,
 			Columns:    table.Columns,
 			PrimaryKey: table.PrimaryKey,
 		}
+
 		_, err := TablePartition.StorageServer.CreateTable(context.Background(), table)
 		if err != nil {
 			return nil, fmt.Errorf("[coordinator] error creating table: %v", err)
@@ -187,6 +193,15 @@ func (c *CoordinatorServerImpl) InsertLine(ctx context.Context, line *Line) (*Co
 	CoordinatorTable.TablePartitions[partitionIdx].RowCount++
 	CoordinatorTable.ReplicationPartitions[partitionIdx].RowCount++
 
+	// cache the result
+	c.PutCache(&GetLineRequest{
+		Table: &Table{
+			Name:       tableName,
+			PrimaryKey: CoordinatorTable.PrimaryKey,
+		},
+		PrimaryKeyValue: line.Line[CoordinatorTable.PrimaryKey],
+	}, replicationLine)
+
 	return &CoordinatorResponse{
 		Message: "success",
 	}, nil
@@ -223,6 +238,9 @@ func (c *CoordinatorServerImpl) DeleteLine(ctx context.Context, line *Line) (*Co
 		}
 	}
 
+	// invalidate the cache
+	c.InvalidateCache(tableName, line.Line[line.PrimaryKey])
+
 	return &CoordinatorResponse{
 		Message: "success",
 	}, nil
@@ -233,6 +251,12 @@ func (c *CoordinatorServerImpl) GetLine(ctx context.Context, lineRequest *GetLin
 	// find the table partition
 	tableName := lineRequest.Table.Name
 	CoordinatorTable := c.CoordinatorTableMap[tableName]
+
+	// check if the line is in the cache
+	if line, ok := c.GetCache(lineRequest); ok {
+		log.Printf("[coordinator] cache hit for %v\n", lineRequest)
+		return line, nil
+	}
 
 	// send the query to all the partitions
 	for _, tablePartition := range CoordinatorTable.TablePartitions {
@@ -281,6 +305,14 @@ func (c *CoordinatorServerImpl) UpdateLine(ctx context.Context, line *Line) (*Co
 		}
 	}
 
+	c.PutCache(&GetLineRequest{
+		Table: &Table{
+			Name:       tableName,
+			PrimaryKey: CoordinatorTable.PrimaryKey,
+		},
+		PrimaryKeyValue: line.Line[CoordinatorTable.PrimaryKey],
+	}, line)
+
 	return &CoordinatorResponse{
 		Message: "success",
 	}, nil
@@ -325,21 +357,22 @@ func (c *CoordinatorServerImpl) GetCoordinatorTable(tableName string) *Coordinat
 	return c.CoordinatorTableMap[tableName]
 }
 
-func (c *CoordinatorServerImpl) init() {
-	c.SSM.storageServers = make(map[string]*StorageServerImpl)
-	c.CoordinatorTableMap = make(map[string]*CoordinatorTable)
-}
-
 func NewCoordinatorServerImpl(storagePorts ...string) *CoordinatorServerImpl {
-	coordinatorServer := &CoordinatorServerImpl{}
-	coordinatorServer.init()
+	coordinatorServer := &CoordinatorServerImpl{
+		NewCoordinatorCache(),
+		StorageServerMap{make(map[string]*StorageServerImpl)},
+		make(map[string]*CoordinatorTable),
+	}
 	for _, storagePort := range storagePorts {
 		// create client stub
 		conn, err := grpc.Dial("localhost:"+storagePort, grpc.WithInsecure())
 		if err != nil {
 			panic(err)
 		}
-		coordinatorServer.SSM.storageServers[storagePort] = &StorageServerImpl{NewStorageClient(conn), nil}
+		coordinatorServer.SSM.storageServers[storagePort] = &StorageServerImpl{
+			NewStorageClient(conn),
+			nil,
+		}
 	}
 	return coordinatorServer
 }
