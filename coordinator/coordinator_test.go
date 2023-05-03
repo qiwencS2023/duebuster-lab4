@@ -26,6 +26,18 @@ var createTableRequest = &CreateTableRequest{
 	PartitionCount: 2,
 }
 
+func cleanup() {
+	// kill process on port 8999 to 9004
+	for i := 9001; i < 9005; i++ {
+		port := strconv.Itoa(i)
+		cmd := exec.Command("sh", "-c", "lsof -i :"+port+" | grep LISTEN | awk '{print $2}' | xargs kill")
+		err := cmd.Run()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+}
+
 func startStorageServer(port string) (StorageClient, context.CancelFunc, error) {
 	target := "../dist/storage -p " + port
 
@@ -115,12 +127,7 @@ func mockCoordinator(port string, storagePorts []string) (CoordinatorServiceClie
 	// run the server with a context
 	ctx, cancel := context.WithCancel(context.Background())
 	go func(ctx context.Context) {
-		go main()
-		// listen for ctx done
-		select {
-		case <-ctx.Done():
-			fmt.Println("main context done")
-		}
+		startCoordinatorServer(ctx)
 	}(ctx)
 
 	// create a client
@@ -135,6 +142,8 @@ func mockCoordinator(port string, storagePorts []string) (CoordinatorServiceClie
 }
 
 func TestCoordinatorServerImpl_CreateTable(t *testing.T) {
+	t.Cleanup(cleanup)
+
 	// mock storage cluster
 	ports, cancelStorage, err := mockStorageCluster(4)
 	// mock coordinator
@@ -159,6 +168,8 @@ func TestCoordinatorServerImpl_CreateTable(t *testing.T) {
 }
 
 func TestCoordinatorServerImpl_DeleteLine(t *testing.T) {
+	t.Cleanup(cleanup)
+
 	// mock storage cluster
 	ports, cancelStorage, err := mockStorageCluster(4)
 	defer cancelStorage()
@@ -208,6 +219,8 @@ func TestCoordinatorServerImpl_DeleteLine(t *testing.T) {
 }
 
 func TestCoordinatorServerImpl_DeleteTable(t *testing.T) {
+	t.Cleanup(cleanup)
+
 	// mock storage cluster
 	ports, cancelStorage, err := mockStorageCluster(4)
 	defer cancelStorage()
@@ -233,6 +246,8 @@ func TestCoordinatorServerImpl_DeleteTable(t *testing.T) {
 }
 
 func TestCoordinatorServerImpl_GetLine(t *testing.T) {
+	t.Cleanup(cleanup)
+
 	// mock storage cluster
 	ports, cancelStorage, err := mockStorageCluster(4)
 	defer cancelStorage()
@@ -281,9 +296,12 @@ func TestCoordinatorServerImpl_GetLine(t *testing.T) {
 	}
 
 	t.Logf("response: %v", newLine)
+	t.Cleanup(cleanup)
 }
 
 func TestCoordinatorServerImpl_InsertLine(t *testing.T) {
+	t.Cleanup(cleanup)
+
 	// mock storage cluster
 	ports, cancelStorage, err := mockStorageCluster(4)
 
@@ -324,10 +342,11 @@ func TestCoordinatorServerImpl_InsertLine(t *testing.T) {
 	}
 
 	t.Logf("response: %v", resp)
-
 }
 
 func TestCoordinatorServerImpl_UpdateLine(t *testing.T) {
+	t.Cleanup(cleanup)
+
 	// mock storage cluster
 	ports, cancelStorage, err := mockStorageCluster(4)
 	defer cancelStorage()
