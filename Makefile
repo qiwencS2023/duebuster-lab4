@@ -50,8 +50,8 @@ prepare:
 	elif [ "$$(expr substr $$(uname -s) 1 5)" = "Linux" ]; then \
 		if ! command -v mysql &> /dev/null; then \
 			echo "mysql could not be found, installing..."; \
-			sudo apt-get install mysql-server; \
-			sudo service mysql start; \
+			apt-get install mysql-server; \
+			service mysql start; \
 		fi \
 	fi
 
