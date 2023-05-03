@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/rand"
 	"strconv"
+	sync "sync"
 	"time"
 
 	"google.golang.org/grpc"
@@ -31,6 +32,7 @@ type CoordinatorTable struct {
 	TablePartitions       []*TablePartition
 	ReplicationPartitions []*TablePartition
 	PrimaryKey            string
+	lock                  sync.Mutex
 }
 
 type CoordinatorServerImpl struct {
@@ -49,6 +51,10 @@ func (c *CoordinatorServerImpl) CreateTable(ctx context.Context, request *Create
 	// create a table in coordinator's view
 	// a new table will be paritioned into 2 parts and replicate 1 times.
 	ct := &CoordinatorTable{}
+
+	// acquire lock
+	ct.lock.Lock()
+	defer ct.lock.Unlock()
 
 	// we do a default replication factor of 2
 	ct.TablePartitions = []*TablePartition{}
@@ -116,6 +122,9 @@ func (c *CoordinatorServerImpl) DeleteTable(ctx context.Context, table *Table) (
 	tableName := table.Name
 	// delete a table in coordinator's view
 	CoordinatorTable := c.CoordinatorTableMap[tableName]
+	// acquire lock
+	CoordinatorTable.lock.Lock()
+	defer CoordinatorTable.lock.Unlock()
 	// delete the underlying table partitions
 	for _, tablePartition := range CoordinatorTable.TablePartitions {
 		table := &Table{
@@ -151,6 +160,9 @@ func (c *CoordinatorServerImpl) InsertLine(ctx context.Context, line *Line) (*Co
 	// find the table partition
 	tableName := line.Table
 	CoordinatorTable := c.CoordinatorTableMap[tableName]
+	// acquire lock
+	CoordinatorTable.lock.Lock()
+	defer CoordinatorTable.lock.Unlock()
 
 	// select the partition with lower count
 	var minRowCountTablePartition TablePartition
@@ -211,6 +223,9 @@ func (c *CoordinatorServerImpl) InsertLine(ctx context.Context, line *Line) (*Co
 func (c *CoordinatorServerImpl) DeleteLine(ctx context.Context, line *Line) (*CoordinatorResponse, error) {
 	tableName := line.Table
 	CoordinatorTable := c.CoordinatorTableMap[tableName]
+	// acquire lock
+	CoordinatorTable.lock.Lock()
+	defer CoordinatorTable.lock.Unlock()
 
 	// delete the line from all the partition
 	for _, tablePartition := range CoordinatorTable.TablePartitions {
@@ -251,6 +266,9 @@ func (c *CoordinatorServerImpl) GetLine(ctx context.Context, lineRequest *GetLin
 	// find the table partition
 	tableName := lineRequest.Table.Name
 	CoordinatorTable := c.CoordinatorTableMap[tableName]
+	// acquire lock
+	CoordinatorTable.lock.Lock()
+	defer CoordinatorTable.lock.Unlock()
 
 	// check if the line is in the cache
 	if line, ok := c.GetCache(lineRequest); ok {
