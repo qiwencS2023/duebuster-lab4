@@ -27,6 +27,9 @@ func (c *CoordinatorCacheImpl) GetCache(request *GetLineRequest) (*Line, bool) {
 func (c *CoordinatorCacheImpl) PutCache(request *GetLineRequest, line *Line) {
 	tableName := request.Table.Name
 	getLineQuery := fmt.Sprintf("%v", request)
+	if _, ok := c.cache[tableName]; !ok {
+		c.cache[tableName] = make(map[string]*Line)
+	}
 	c.cache[tableName][getLineQuery] = line
 }
 

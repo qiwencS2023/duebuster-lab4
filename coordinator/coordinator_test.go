@@ -117,7 +117,10 @@ func mockCoordinator(port string, storagePorts []string) (CoordinatorServiceClie
 	go func(ctx context.Context) {
 		go main()
 		// listen for ctx done
-		<-ctx.Done()
+		select {
+		case <-ctx.Done():
+			fmt.Println("main context done")
+		}
 	}(ctx)
 
 	// create a client
