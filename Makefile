@@ -28,8 +28,8 @@ build:
 	go build -o dist/coordinator ./coordinator/*.go
 
 test:
-	go test ./coordinator/
-	go test ./storage/
+	go test -v ./coordinator/
+	go test -v ./storage/
 
 clean:
 	rm -rf ./dist
@@ -38,16 +38,18 @@ clean:
 	rm -rf ./**/*.pb.go
 
 prepare:
+	go mod tidy
+
 	# check and install mysql
-	if [ "$(uname)" == "Darwin" ]; then \
+	if [ "$$(uname)" = "Darwin" ]; then \
+    		if ! command -v mysql &> /dev/null; then \
+    		  	echo "mysql could not be found, installing..."; \
+    			brew install mysql; \
+    			brew services start mysql; \
+    		fi \
+	elif [ "$$(expr substr $$(uname -s) 1 5)" = "Linux" ]; then \
 		if ! command -v mysql &> /dev/null; then \
-		  	echo "mysql could not be found, installing..."; \
-			brew install mysql; \
-			brew services start mysql; \
-		fi \
-	elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then \
-		if ! command -v mysql &> /dev/null; then \
-		  	echo "mysql could not be found, installing..."; \
+			echo "mysql could not be found, installing..."; \
 			sudo apt-get install mysql-server; \
 			sudo service mysql start; \
 		fi \
