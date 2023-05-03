@@ -35,3 +35,29 @@ clean:
 	# clear protobuf generated files
 	rm -rf ./*.pb.go
 	rm -rf ./**/*.pb.go
+
+prepare:
+	# check and install mysql
+	if [ "$(uname)" == "Darwin" ]; then \
+		if ! command -v mysql &> /dev/null; then \
+		  	echo "mysql could not be found, installing..."; \
+			brew install mysql; \
+			brew services start mysql; \
+		fi \
+	elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then \
+		if ! command -v mysql &> /dev/null; then \
+		  	echo "mysql could not be found, installing..."; \
+			sudo apt-get install mysql-server; \
+			sudo service mysql start; \
+		fi \
+	fi
+
+	# create database 'golab4_test'
+	mysql -u root -e "CREATE DATABASE IF NOT EXISTS golab4_test;"
+
+	# create golab4 user
+	mysql -u root -e "CREATE USER IF NOT EXISTS 'golab4'@'localhost' IDENTIFIED BY 'golab4';"
+
+	# grant privileges to golab4 user to access golab4_test database
+	mysql -u root -e "GRANT ALL PRIVILEGES ON golab4_test.* TO 'golab4'@'localhost';"
+

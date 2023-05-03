@@ -68,9 +68,9 @@ func startStorageServer(port string) (StorageClient, context.CancelFunc, error) 
 		Type:     "mysql",
 		Host:     "localhost",
 		Port:     3306,
-		Database: "test",
-		Password: "test",
-		User:     "test",
+		Database: "golab4",
+		Password: "golab4",
+		User:     "golab4",
 	})
 	if err != nil {
 		panic(err)
