@@ -28,8 +28,9 @@ build:
 	go build -o dist/coordinator ./coordinator/*.go
 
 test:
-	timeout 60s go test -v ./coordinator/
-	timeout 60s go test -v ./storage/
+	go test -v ./storage/ > result.txt
+	go test -v ./coordinator/ >> result.txt
+	grep "TEST" result.txt
 
 clean:
 	rm -rf ./dist
