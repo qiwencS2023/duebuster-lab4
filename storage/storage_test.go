@@ -30,7 +30,7 @@ var table = &Table{
 
 func TestStorageServerImpl_Register(t *testing.T) {
 	// mock command line arguments
-	client, cancelServer, err := startStorageServer("")
+	client, cancelServer, err := startStorageServer("9000")
 
 	// call register
 	_, err = client.Register(context.Background(), &Database{
@@ -50,18 +50,16 @@ func TestStorageServerImpl_Register(t *testing.T) {
 }
 
 func startStorageServer(port string) (StorageClient, context.CancelFunc, error) {
-	os.Args = []string{"storage -p ", port}
+	os.Args = []string{"storage", "-p", port}
 
 	// run the server with a context
 	ctx, cancel := context.WithCancel(context.Background())
 	go func(ctx context.Context) {
-		go main()
-		// listen for ctx done
-		<-ctx.Done()
+		startStorageServerWithCtx(ctx)
 	}(ctx)
 
 	// create a client
-	conn, err := grpc.Dial("localhost"+port, grpc.WithInsecure())
+	conn, err := grpc.Dial("localhost:"+port, grpc.WithInsecure())
 	if err != nil {
 		panic(err)
 	}
@@ -87,7 +85,6 @@ func TestStorageServerImpl_CreateTable(t *testing.T) {
 	}
 
 	// call create table
-
 	_, err = client.CreateTable(context.Background(), table)
 
 	if err != nil {
