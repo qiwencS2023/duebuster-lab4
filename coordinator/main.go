@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"google.golang.org/grpc"
+	"log"
 	"net"
 	"os"
 	"os/signal"
@@ -70,6 +71,7 @@ func startCoordinatorServer(ctx context.Context) {
 
 	// start the grpc server
 	go func() {
+		log.Printf("[coordinator] starting coordinator server on port %s", cPort)
 		grpcServer.Serve(lis)
 	}()
 

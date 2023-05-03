@@ -156,7 +156,7 @@ func mockCoordinator(port string, storagePorts []string) (context.CancelFunc, er
 
 func ClientFactory(addr string) (CoordinatorServiceClient, error) {
 	// create a client
-	conn, err := grpc.Dial("localhost:8999", grpc.WithInsecure())
+	conn, err := grpc.Dial(addr, grpc.WithInsecure())
 	if err != nil {
 		panic(err)
 	}

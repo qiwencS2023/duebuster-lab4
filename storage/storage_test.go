@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"os"
 	"testing"
@@ -15,9 +14,9 @@ var database = &Database{
 	Type:     "mysql",
 	Host:     "localhost",
 	Port:     3306,
-	Database: "test",
-	User:     "test",
-	Password: "test",
+	Database: "golab4",
+	User:     "golab4",
+	Password: "golab4",
 }
 
 var table = &Table{
@@ -36,22 +35,22 @@ func printPointsOnSuccess(testName string, points int) {
 func TestStorageServerImpl_Register(t *testing.T) {
 	// mock command line arguments
 	client, cancelServer, err := startStorageServer("9000")
+	t.Cleanup(cancelServer)
 
 	// call register
 	_, err = client.Register(context.Background(), &Database{
 		Type:     "mysql",
 		Host:     "localhost",
 		Port:     3306,
-		Database: "test",
-		User:     "test",
-		Password: "test",
+		Database: "golab4",
+		User:     "golab4",
+		Password: "golab4",
 	})
 
 	if err != nil {
 		t.Error(err)
 	}
 
-	cancelServer()
 }
 
 func startStorageServer(port string) (StorageClient, context.CancelFunc, error) {
@@ -84,6 +83,7 @@ func startStorageServer(port string) (StorageClient, context.CancelFunc, error) 
 
 func TestStorageServerImpl_CreateTable(t *testing.T) {
 	client, cancelServer, err := startStorageServer("9000")
+	t.Cleanup(cancelServer)
 	_, err = client.Register(context.Background(), database)
 	if err != nil {
 		t.Error(err)
@@ -96,13 +96,13 @@ func TestStorageServerImpl_CreateTable(t *testing.T) {
 		t.Error(err)
 	}
 
-	cancelServer()
 	printPointsOnSuccess("TestStorageServerImpl_CreateTable", 10)
 
 }
 
 func TestStorageServerImpl_DeleteTable(t *testing.T) {
 	client, cancelServer, err := startStorageServer("9000")
+	t.Cleanup(cancelServer)
 	_, err = client.Register(context.Background(), database)
 	if err != nil {
 		t.Error(err)
@@ -123,12 +123,12 @@ func TestStorageServerImpl_DeleteTable(t *testing.T) {
 		t.Error(err)
 	}
 
-	cancelServer()
 	printPointsOnSuccess("TestStorageServerImpl_DeleteTable", 10)
 }
 
 func TestStorageServerImpl_InsertLine(t *testing.T) {
 	client, cancelServer, err := startStorageServer("9000")
+	t.Cleanup(cancelServer)
 	_, err = client.Register(context.Background(), database)
 	if err != nil {
 		t.Error(err)
@@ -152,12 +152,12 @@ func TestStorageServerImpl_InsertLine(t *testing.T) {
 		t.Error(err)
 	}
 
-	cancelServer()
 	printPointsOnSuccess("TestStorageServerImpl_InsertLine", 10)
 }
 
 func TestStorageServerImpl_DeleteLine(t *testing.T) {
 	client, cancelServer, err := startStorageServer("9000")
+	t.Cleanup(cancelServer)
 	_, err = client.Register(context.Background(), database)
 	if err != nil {
 		t.Error(err)
@@ -202,12 +202,12 @@ func TestStorageServerImpl_DeleteLine(t *testing.T) {
 		t.Error(err)
 	}
 
-	cancelServer()
 	printPointsOnSuccess("TestStorageServerImpl_DeleteLine", 10)
 }
 
 func TestStorageServerImpl_UpdateLine(t *testing.T) {
 	client, cancelServer, err := startStorageServer("9000")
+	t.Cleanup(cancelServer)
 	_, err = client.Register(context.Background(), database)
 	if err != nil {
 		t.Error(err)
@@ -253,12 +253,12 @@ func TestStorageServerImpl_UpdateLine(t *testing.T) {
 		t.Error(err)
 	}
 
-	cancelServer()
 	printPointsOnSuccess("TestStorageServerImpl_UpdateLine", 10)
 }
 
 func TestStorageServerImpl_GetLine(t *testing.T) {
 	client, cancelServer, err := startStorageServer("9000")
+	t.Cleanup(cancelServer)
 	_, err = client.Register(context.Background(), database)
 	if err != nil {
 		t.Error(err)
@@ -304,80 +304,5 @@ func TestStorageServerImpl_GetLine(t *testing.T) {
 		t.Error(err)
 	}
 
-	cancelServer()
 	printPointsOnSuccess("TestStorageServerImpl_GetLine", 10)
-}
-
-func Test_GetLine(t *testing.T) {
-	request := &GetLineRequest{
-		Table: &Table{
-			Name:       "test_table",
-			PrimaryKey: "id",
-		},
-		PrimaryKeyValue: "1",
-	}
-	table := request.Table
-	pk := request.PrimaryKeyValue
-
-	// Create SQL command
-	cmd := fmt.Sprintf("SELECT * FROM %s WHERE %s = %s", table.Name, table.PrimaryKey, pk)
-
-	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s", "test", "test", "localhost", "test")
-	db, err := sql.Open("mysql", dsn)
-
-	// Execute SQL command
-	rows, err := db.Query(cmd)
-	if err != nil {
-		fmt.Printf("error: %v\n", err)
-	}
-
-	// Get column names
-	columns, err := rows.Columns()
-
-	// Get column types
-	types, err := rows.ColumnTypes()
-
-	for rows.Next() {
-		// Create column values
-		columnValues := make(map[string]string)
-
-		// Create column pointers
-		columnPointers := make([]interface{}, len(columns))
-		for i, _ := range columns {
-			columnPointers[i] = new(interface{})
-		}
-
-		// Scan columns into pointers
-		if err := rows.Scan(columnPointers...); err != nil {
-			fmt.Printf("error: %v\n", err)
-		}
-
-		// Put column values into map
-		for i, column := range columns {
-			columnValue := columnPointers[i].(*interface{})
-			columnType := types[i].DatabaseTypeName()
-			fmt.Printf("column: %s, type: %s\n", column, columnType)
-			switch columnType {
-			case "VARCHAR", "TEXT":
-				columnValues[column] = string((*columnValue).([]uint8))
-			case "INT":
-				columnValues[column] = string((*columnValue).([]uint8))
-			case "FLOAT":
-				columnValues[column] = string((*columnValue).([]uint8))
-			default:
-				return
-			}
-		}
-
-		// Create line
-		_ = &Line{
-			Table:      table.Name,
-			PrimaryKey: table.PrimaryKey,
-			Line:       columnValues,
-		}
-
-		fmt.Printf("line: %v\n", columnValues)
-
-	}
-
 }
