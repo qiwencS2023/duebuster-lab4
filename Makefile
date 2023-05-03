@@ -53,11 +53,11 @@ prepare:
 	fi
 
 	# create database 'golab4_test'
-	mysql -u root -e "CREATE DATABASE IF NOT EXISTS golab4_test;"
+	mysql -u root -e "CREATE DATABASE IF NOT EXISTS golab4;"
 
 	# create golab4 user
 	mysql -u root -e "CREATE USER IF NOT EXISTS 'golab4'@'localhost' IDENTIFIED BY 'golab4';"
 
 	# grant privileges to golab4 user to access golab4_test database
-	mysql -u root -e "GRANT ALL PRIVILEGES ON golab4_test.* TO 'golab4'@'localhost';"
+	mysql -u root -e "GRANT ALL PRIVILEGES ON golab4.* TO 'golab4'@'localhost';"
 

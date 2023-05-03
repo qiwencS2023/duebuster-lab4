@@ -121,18 +121,10 @@ func mockCoordinator(port string, storagePorts []string) (CoordinatorServiceClie
 	}(ctx)
 
 	// create a client
-	conn, err := grpc.Dial("localhost:8999", grpc.WithInsecure())
+	conn, err := grpc.Dial("localhost:"+port, grpc.WithInsecure())
 	if err != nil {
 		panic(err)
 	}
-
-	// create a sub context
-
-	// close connection when context is done
-	go func(ctx context.Context) {
-		<-ctx.Done()
-		conn.Close()
-	}(ctx)
 
 	// create a storage client
 	client := NewCoordinatorServiceClient(conn)
