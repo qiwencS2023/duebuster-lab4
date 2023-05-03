@@ -39,6 +39,10 @@ func cleanup() {
 	}
 }
 
+func printPointsOnSuccess(testName string, points int) {
+	fmt.Println("[TEST] Test ",testName, "succesfulPoints: ", points)
+}
+
 func startStorageServer(port string) (StorageClient, context.CancelFunc, error) {
 	target := "../dist/storage -p " + port
 
@@ -186,7 +190,7 @@ func TestCoordinatorServerImpl_CreateTable(t *testing.T) {
 	t.Logf("response: %v", resp)
 	cancelServer()
 	cancelStorage()
-
+	printPointsOnSuccess("TestCoordinatorServerImpl_CreateTable", 20)
 }
 
 func TestCoordinatorServerImpl_DeleteLine(t *testing.T) {
@@ -239,6 +243,7 @@ func TestCoordinatorServerImpl_DeleteLine(t *testing.T) {
 	}
 
 	t.Logf("response: %v", resp)
+	printPointsOnSuccess("TestCoordinatorServerImpl_DeleteLine", 20)
 }
 
 func TestCoordinatorServerImpl_DeleteTable(t *testing.T) {
@@ -267,6 +272,7 @@ func TestCoordinatorServerImpl_DeleteTable(t *testing.T) {
 	}
 
 	t.Logf("response: %v", resp)
+	printPointsOnSuccess("TestCoordinatorServerImpl_DeleteTable", 20)
 }
 
 func TestCoordinatorServerImpl_GetLine(t *testing.T) {
@@ -322,6 +328,7 @@ func TestCoordinatorServerImpl_GetLine(t *testing.T) {
 
 	t.Logf("response: %v", newLine)
 	t.Cleanup(cleanup)
+	printPointsOnSuccess("TestCoordinatorServerImpl_GetLine", 20)
 }
 
 func TestCoordinatorServerImpl_InsertLine(t *testing.T) {
@@ -368,6 +375,7 @@ func TestCoordinatorServerImpl_InsertLine(t *testing.T) {
 	}
 
 	t.Logf("response: %v", resp)
+	printPointsOnSuccess("TestCoordinatorServerImpl_InsertLine", 20)
 }
 
 func TestCoordinatorServerImpl_UpdateLine(t *testing.T) {
@@ -423,9 +431,12 @@ func TestCoordinatorServerImpl_UpdateLine(t *testing.T) {
 	}
 
 	t.Logf("response: %v", resp)
+	printPointsOnSuccess("TestCoordinatorServerImpl_UpdateLine", 20)
 }
 
 func TestMultipleClientCanInsertIntoDB(t *testing.T) {
+	t.Cleanup(cleanup)
+
 	// mock storage cluster
 	ports, cancelStorage, err := mockStorageCluster(4)
 	defer cancelStorage()
@@ -491,5 +502,5 @@ func TestMultipleClientCanInsertIntoDB(t *testing.T) {
 	}
 
 	t.Logf("response: %v", resp)
-
+	printPointsOnSuccess("TestMultipleClientCanInsertIntoDB", 20)
 }

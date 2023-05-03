@@ -4,9 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"google.golang.org/grpc"
 	"os"
 	"testing"
+
+	"google.golang.org/grpc"
 )
 
 // call register
@@ -26,6 +27,10 @@ var table = &Table{
 		"test_column": "varchar(255)",
 	},
 	PrimaryKey: "id",
+}
+
+func printPointsOnSuccess(testName string, points int) {
+	fmt.Println("[TEST] Test ",testName, "succesfulPoints: ", points)
 }
 
 func TestStorageServerImpl_Register(t *testing.T) {
@@ -92,6 +97,8 @@ func TestStorageServerImpl_CreateTable(t *testing.T) {
 	}
 
 	cancelServer()
+	printPointsOnSuccess("TestStorageServerImpl_CreateTable", 10)
+
 }
 
 func TestStorageServerImpl_DeleteTable(t *testing.T) {
@@ -117,6 +124,7 @@ func TestStorageServerImpl_DeleteTable(t *testing.T) {
 	}
 
 	cancelServer()
+	printPointsOnSuccess("TestStorageServerImpl_DeleteTable", 10)
 }
 
 func TestStorageServerImpl_InsertLine(t *testing.T) {
@@ -145,6 +153,7 @@ func TestStorageServerImpl_InsertLine(t *testing.T) {
 	}
 
 	cancelServer()
+	printPointsOnSuccess("TestStorageServerImpl_InsertLine", 10)
 }
 
 func TestStorageServerImpl_DeleteLine(t *testing.T) {
@@ -194,6 +203,7 @@ func TestStorageServerImpl_DeleteLine(t *testing.T) {
 	}
 
 	cancelServer()
+	printPointsOnSuccess("TestStorageServerImpl_DeleteLine", 10)
 }
 
 func TestStorageServerImpl_UpdateLine(t *testing.T) {
@@ -244,6 +254,7 @@ func TestStorageServerImpl_UpdateLine(t *testing.T) {
 	}
 
 	cancelServer()
+	printPointsOnSuccess("TestStorageServerImpl_UpdateLine", 10)
 }
 
 func TestStorageServerImpl_GetLine(t *testing.T) {
@@ -294,6 +305,7 @@ func TestStorageServerImpl_GetLine(t *testing.T) {
 	}
 
 	cancelServer()
+	printPointsOnSuccess("TestStorageServerImpl_GetLine", 10)
 }
 
 func Test_GetLine(t *testing.T) {

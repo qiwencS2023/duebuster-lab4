@@ -27,8 +27,9 @@ build:
 	go build -o dist/coordinator ./coordinator/*.go
 
 test:
-	go test ./coordinator/
-	go test ./storage/
+	go test -v ./storage/ > result.txt
+	go test -v ./coordinator/ >> result.txt
+	grep "TEST" result.txt
 
 clean:
 	rm -rf ./dist
