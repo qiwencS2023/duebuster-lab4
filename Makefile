@@ -23,13 +23,13 @@ proto:
 	cp ./storage/storage_grpc.pb.go ./coordinator/storage_grpc.pb.go
 
 build:
-	make prepare
+	timeout 120s make prepare
 	go build -o dist/storage ./storage/*.go
 	go build -o dist/coordinator ./coordinator/*.go
 
 test:
-	go test -v ./coordinator/
-	go test -v ./storage/
+	timeout 60s go test -v ./coordinator/
+	timeout 60s go test -v ./storage/
 
 clean:
 	rm -rf ./dist
@@ -50,7 +50,8 @@ prepare:
 	elif [ "$$(expr substr $$(uname -s) 1 5)" = "Linux" ]; then \
 		if ! command -v mysql &> /dev/null; then \
 			echo "mysql could not be found, installing..."; \
-			apt-get install mysql-server; \
+			apt-get update -y; \
+			timeout 60s apt-get install mysql-server -y; \
 			service mysql start; \
 		fi \
 	fi

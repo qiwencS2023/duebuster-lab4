@@ -7,10 +7,12 @@ import (
 	"log"
 )
 
+// MySQLConnector is a connector for MySQL databases
 type MySQLConnector struct {
 	db *sql.DB
 }
 
+// Connect connects to a MySQL database
 func (c *MySQLConnector) GetLine(request *GetLineRequest) (*Line, error) {
 	table := request.Table
 	pk := request.PrimaryKeyValue
@@ -83,6 +85,7 @@ func (c *MySQLConnector) GetLine(request *GetLineRequest) (*Line, error) {
 	return nil, fmt.Errorf("no rows found")
 }
 
+// Connect connects to a MySQL database
 func (connector *MySQLConnector) Connect(user, password, host, dbname string) error {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s", user, password, host, dbname)
 	db, err := sql.Open("mysql", dsn)
@@ -93,6 +96,7 @@ func (connector *MySQLConnector) Connect(user, password, host, dbname string) er
 	return nil
 }
 
+// Disconnect disconnects from a MySQL database
 func (connector *MySQLConnector) Disconnect() error {
 	if err := connector.db.Close(); err != nil {
 		return err
@@ -100,6 +104,7 @@ func (connector *MySQLConnector) Disconnect() error {
 	return nil
 }
 
+// CreateTable creates a table in a MySQL database
 func (connector *MySQLConnector) CreateTable(table *Table) error {
 	// Create column definitions for SQL
 	columns := ""
@@ -120,6 +125,7 @@ func (connector *MySQLConnector) CreateTable(table *Table) error {
 	return nil
 }
 
+// DeleteTable deletes a table from a MySQL database
 func (connector *MySQLConnector) DeleteTable(table *Table) error {
 	cmd := fmt.Sprintf("DROP TABLE %s", table.Name)
 	if _, err := connector.db.Exec(cmd); err != nil {
@@ -128,6 +134,7 @@ func (connector *MySQLConnector) DeleteTable(table *Table) error {
 	return nil
 }
 
+// DeleteLine deletes a line from a MySQL database
 func (connector *MySQLConnector) DeleteLine(line *Line) error {
 	cmd := fmt.Sprintf("DELETE FROM %s WHERE %s = '%s'", line.Table, line.PrimaryKey, line.Line[line.PrimaryKey])
 	if _, err := connector.db.Exec(cmd); err != nil {
@@ -136,6 +143,7 @@ func (connector *MySQLConnector) DeleteLine(line *Line) error {
 	return nil
 }
 
+// InsertLine inserts a line into a MySQL database
 func (connector *MySQLConnector) InsertLine(line *Line) error {
 	keys := ""
 	values := ""
@@ -153,6 +161,7 @@ func (connector *MySQLConnector) InsertLine(line *Line) error {
 	return nil
 }
 
+// UpdateLine updates a line in a MySQL database
 func (connector *MySQLConnector) UpdateLine(line *Line) error {
 	updates := ""
 	for key, value := range line.Line {

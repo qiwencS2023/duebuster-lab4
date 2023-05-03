@@ -13,21 +13,25 @@ import (
 	"google.golang.org/grpc"
 )
 
+// StorageCommand is the command line arguments for the storage server
 type StorageServerImpl struct {
 	StorageClient
 	stop func()
 }
 
+// StorageServerMap is a map of storage servers, indexed by port
 type StorageServerMap struct {
 	storageServers map[string]*StorageServerImpl // port -> storage server
 }
 
+// TablePartition is a partition of a table, stored on a storage server
 type TablePartition struct {
 	StorageServer *StorageServerImpl
 	Name          string
 	RowCount      int
 }
 
+// CoordinatorTable is a table in the coordinator's view, which is partitioned and replicated
 type CoordinatorTable struct {
 	TablePartitions       []*TablePartition
 	ReplicationPartitions []*TablePartition
@@ -35,12 +39,15 @@ type CoordinatorTable struct {
 	lock                  sync.Mutex
 }
 
+// CoordinatorServerImpl is the coordinator server, which is responsible for managing the storage servers
 type CoordinatorServerImpl struct {
 	CoordinatorCache
 	SSM                 StorageServerMap
 	CoordinatorTableMap map[string]*CoordinatorTable
 }
 
+// CreateTable creates a table in the coordinator's view
+// It will randomly assign storage servers to the table partitions
 func (c *CoordinatorServerImpl) CreateTable(ctx context.Context, request *CreateTableRequest) (*CoordinatorResponse, error) {
 	fmt.Println("[Coordinator] Received CreateTable request: ", request)
 
@@ -118,6 +125,8 @@ func (c *CoordinatorServerImpl) CreateTable(ctx context.Context, request *Create
 	}, nil
 }
 
+// DeleteTable deletes a table in the coordinator's view,
+// and also deletes the underlying table partitions and replication partitions
 func (c *CoordinatorServerImpl) DeleteTable(ctx context.Context, table *Table) (*CoordinatorResponse, error) {
 	tableName := table.Name
 	// delete a table in coordinator's view
@@ -156,6 +165,9 @@ func (c *CoordinatorServerImpl) DeleteTable(ctx context.Context, table *Table) (
 	}, nil
 }
 
+// InsertLine inserts a line into a table in the coordinator's view
+// It will randomly and by default insert into the partition with lower count
+// to achieve load balancing
 func (c *CoordinatorServerImpl) InsertLine(ctx context.Context, line *Line) (*CoordinatorResponse, error) {
 	// find the table partition
 	tableName := line.Table
@@ -220,6 +232,8 @@ func (c *CoordinatorServerImpl) InsertLine(ctx context.Context, line *Line) (*Co
 
 }
 
+// DeleteLine deletes a line from a table in the coordinator's view
+// It will delete the line from all the partitions and replication partitions
 func (c *CoordinatorServerImpl) DeleteLine(ctx context.Context, line *Line) (*CoordinatorResponse, error) {
 	tableName := line.Table
 	CoordinatorTable := c.CoordinatorTableMap[tableName]
@@ -262,6 +276,8 @@ func (c *CoordinatorServerImpl) DeleteLine(ctx context.Context, line *Line) (*Co
 
 }
 
+// GetLine gets a line from a table in the coordinator's view
+// It will first check the cache, if not found, it will send the query to all the partitions
 func (c *CoordinatorServerImpl) GetLine(ctx context.Context, lineRequest *GetLineRequest) (*Line, error) {
 	// find the table partition
 	tableName := lineRequest.Table.Name
@@ -294,6 +310,8 @@ func (c *CoordinatorServerImpl) GetLine(ctx context.Context, lineRequest *GetLin
 	return nil, errors.New("line not found")
 }
 
+// UpdateLine updates a line in a table in the coordinator's view
+// It will update the line in all the partitions and replication partitions
 func (c *CoordinatorServerImpl) UpdateLine(ctx context.Context, line *Line) (*CoordinatorResponse, error) {
 	tableName := line.Table
 	CoordinatorTable := c.CoordinatorTableMap[tableName]
@@ -336,11 +354,14 @@ func (c *CoordinatorServerImpl) UpdateLine(ctx context.Context, line *Line) (*Co
 	}, nil
 }
 
+// mustEmbedUnimplementedCoordinatorServiceServer is a "must implementation" function for the gRPC server
 func (c *CoordinatorServerImpl) mustEmbedUnimplementedCoordinatorServiceServer() {
 	//TODO implement me
 	panic("implement me")
 }
 
+// RegisterStorageServer registers a storage server to the coordinator
+// It will add the storage server to the storage server map
 func (c *CoordinatorServerImpl) RegisterStorageServer(ctx context.Context, request *RegisterRequest) (*CoordinatorResponse, error) {
 
 	conn, err := grpc.Dial(request.StorageAddr, grpc.WithInsecure())
@@ -356,7 +377,8 @@ func (c *CoordinatorServerImpl) RegisterStorageServer(ctx context.Context, reque
 	}, nil
 }
 
-// randomly get 4 storage servers
+// RandomPartitions returns n random partitions from the storage server map
+// It will be used to select n random partitions for replication
 func RandomPartitions(m map[string]*StorageServerImpl, n int) []*StorageServerImpl {
 	keys := make([]*StorageServerImpl, 0, len(m))
 	for _, value := range m {
@@ -371,10 +393,14 @@ func RandomPartitions(m map[string]*StorageServerImpl, n int) []*StorageServerIm
 	return keys[:n]
 }
 
+// GetCoordinatorTable returns a coordinator table from the coordinator table map
+// It will be used to get the coordinator table from the coordinator table map
 func (c *CoordinatorServerImpl) GetCoordinatorTable(tableName string) *CoordinatorTable {
 	return c.CoordinatorTableMap[tableName]
 }
 
+// NewCoordinatorServerImpl creates a new coordinator server
+// It will create a new coordinator server with a new coordinator cache and a new storage server map
 func NewCoordinatorServerImpl(storagePorts ...string) *CoordinatorServerImpl {
 	coordinatorServer := &CoordinatorServerImpl{
 		NewCoordinatorCache(),

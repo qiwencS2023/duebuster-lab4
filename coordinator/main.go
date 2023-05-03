@@ -44,6 +44,7 @@ func main() {
 	<-sig
 }
 
+// startCoordinatorServerWithCtx starts a coordinator server with a context, which can be used to stop the server
 func startCoordinatorServer(ctx context.Context) {
 	args := os.Args
 	println(args)

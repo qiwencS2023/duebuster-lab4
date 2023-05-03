@@ -5,10 +5,12 @@ import (
 	"github.com/gocql/gocql"
 )
 
+// CassandraConnector is a connector for Cassandra databases
 type CassandraConnector struct {
 	session *gocql.Session
 }
 
+// Connect connects to a Cassandra database
 func (c *CassandraConnector) GetLine(request *GetLineRequest) (*Line, error) {
 	table := request.Table
 	pk := request.PrimaryKeyValue
@@ -42,6 +44,7 @@ func (c *CassandraConnector) GetLine(request *GetLineRequest) (*Line, error) {
 	return line, nil
 }
 
+// Connect connects to a Cassandra database
 func (connector *CassandraConnector) Connect(user, password, host, dbname string) error {
 	cluster := gocql.NewCluster(host)
 	cluster.Authenticator = gocql.PasswordAuthenticator{
@@ -58,11 +61,13 @@ func (connector *CassandraConnector) Connect(user, password, host, dbname string
 	return nil
 }
 
+// Disconnect disconnects from a Cassandra database
 func (connector *CassandraConnector) Disconnect() error {
 	connector.session.Close()
 	return nil
 }
 
+// CreateTable creates a table in a Cassandra database
 func (connector *CassandraConnector) CreateTable(table *Table) error {
 	// Create column definitions for CQL
 	columns := ""
@@ -81,6 +86,7 @@ func (connector *CassandraConnector) CreateTable(table *Table) error {
 	return nil
 }
 
+// DeleteTable deletes a table in a Cassandra database
 func (connector *CassandraConnector) DeleteTable(table *Table) error {
 	cmd := fmt.Sprintf("DROP TABLE IF EXISTS %s", table.Name)
 	if err := connector.session.Query(cmd).Exec(); err != nil {
@@ -89,6 +95,7 @@ func (connector *CassandraConnector) DeleteTable(table *Table) error {
 	return nil
 }
 
+// DeleteLine deletes a line in a Cassandra database
 func (connector *CassandraConnector) DeleteLine(line *Line) error {
 	cmd := fmt.Sprintf("DELETE FROM %s WHERE %s = ?", line.Table, line.PrimaryKey)
 	if err := connector.session.Query(cmd, line.Line[line.PrimaryKey]).Exec(); err != nil {
@@ -97,6 +104,7 @@ func (connector *CassandraConnector) DeleteLine(line *Line) error {
 	return nil
 }
 
+// InsertLine inserts a line in a Cassandra database
 func (connector *CassandraConnector) InsertLine(line *Line) error {
 	keys := ""
 	values := ""
@@ -114,6 +122,7 @@ func (connector *CassandraConnector) InsertLine(line *Line) error {
 	return nil
 }
 
+// UpdateLine updates a line in a Cassandra database
 func (connector *CassandraConnector) UpdateLine(line *Line) error {
 	updates := ""
 	values := make([]interface{}, 0, len(line.Line))
