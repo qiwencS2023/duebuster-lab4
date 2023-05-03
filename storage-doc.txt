@@ -1,0 +1,375 @@
+
+
+VARIABLES
+
+var (
+	StorageResponse_Status_name = map[int32]string{
+		0: "OK",
+		1: "ERROR",
+	}
+	StorageResponse_Status_value = map[string]int32{
+		"OK":    0,
+		"ERROR": 1,
+	}
+)
+    Enum value maps for StorageResponse_Status.
+
+var File_entities_proto protoreflect.FileDescriptor
+var File_storage_proto protoreflect.FileDescriptor
+var Storage_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "Storage",
+	HandlerType: (*StorageServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Register",
+			Handler:    _Storage_Register_Handler,
+		},
+		{
+			MethodName: "CreateTable",
+			Handler:    _Storage_CreateTable_Handler,
+		},
+		{
+			MethodName: "DeleteTable",
+			Handler:    _Storage_DeleteTable_Handler,
+		},
+		{
+			MethodName: "InsertLine",
+			Handler:    _Storage_InsertLine_Handler,
+		},
+		{
+			MethodName: "DeleteLine",
+			Handler:    _Storage_DeleteLine_Handler,
+		},
+		{
+			MethodName: "UpdateLine",
+			Handler:    _Storage_UpdateLine_Handler,
+		},
+		{
+			MethodName: "GetLine",
+			Handler:    _Storage_GetLine_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "storage.proto",
+}
+    Storage_ServiceDesc is the grpc.ServiceDesc for Storage service. It's only
+    intended for direct use with grpc.RegisterService, and not to be
+    introspected or modified (even as a copy)
+
+
+FUNCTIONS
+
+func RegisterStorageServer(s grpc.ServiceRegistrar, srv StorageServer)
+
+TYPES
+
+type CassandraConnector struct {
+	// Has unexported fields.
+}
+    CassandraConnector is a connector for Cassandra databases
+
+func (connector *CassandraConnector) Connect(user, password, host, dbname string) error
+    Connect connects to a Cassandra database
+
+func (connector *CassandraConnector) CreateTable(table *Table) error
+    CreateTable creates a table in a Cassandra database
+
+func (connector *CassandraConnector) DeleteLine(line *Line) error
+    DeleteLine deletes a line in a Cassandra database
+
+func (connector *CassandraConnector) DeleteTable(table *Table) error
+    DeleteTable deletes a table in a Cassandra database
+
+func (connector *CassandraConnector) Disconnect() error
+    Disconnect disconnects from a Cassandra database
+
+func (c *CassandraConnector) GetLine(request *GetLineRequest) (*Line, error)
+    Connect connects to a Cassandra database
+
+func (connector *CassandraConnector) InsertLine(line *Line) error
+    InsertLine inserts a line in a Cassandra database
+
+func (connector *CassandraConnector) UpdateLine(line *Line) error
+    UpdateLine updates a line in a Cassandra database
+
+type DBConnector interface {
+	Connect(user, password, host, dbname string) error
+	Disconnect() error
+	CreateTable(table *Table) error
+	DeleteTable(table *Table) error
+	DeleteLine(line *Line) error
+	InsertLine(line *Line) error
+	UpdateLine(line *Line) error
+	GetLine(request *GetLineRequest) (*Line, error)
+}
+    DBConnector is an interface for database connectors, each database connector
+    must implement this interface
+
+type Database struct {
+	Type     string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Host     string `protobuf:"bytes,2,opt,name=host,proto3" json:"host,omitempty"`
+	Port     int32  `protobuf:"varint,3,opt,name=port,proto3" json:"port,omitempty"`
+	Database string `protobuf:"bytes,4,opt,name=database,proto3" json:"database,omitempty"`
+	User     string `protobuf:"bytes,5,opt,name=user,proto3" json:"user,omitempty"`
+	Password string `protobuf:"bytes,6,opt,name=password,proto3" json:"password,omitempty"`
+	// Has unexported fields.
+}
+
+func (*Database) Descriptor() ([]byte, []int)
+    Deprecated: Use Database.ProtoReflect.Descriptor instead.
+
+func (x *Database) GetDatabase() string
+
+func (x *Database) GetHost() string
+
+func (x *Database) GetPassword() string
+
+func (x *Database) GetPort() int32
+
+func (x *Database) GetType() string
+
+func (x *Database) GetUser() string
+
+func (*Database) ProtoMessage()
+
+func (x *Database) ProtoReflect() protoreflect.Message
+
+func (x *Database) Reset()
+
+func (x *Database) String() string
+
+type GetLineRequest struct {
+	Table           *Table `protobuf:"bytes,1,opt,name=table,proto3" json:"table,omitempty"`
+	PrimaryKeyValue string `protobuf:"bytes,2,opt,name=primary_key_value,json=primaryKeyValue,proto3" json:"primary_key_value,omitempty"`
+	// Has unexported fields.
+}
+
+func (*GetLineRequest) Descriptor() ([]byte, []int)
+    Deprecated: Use GetLineRequest.ProtoReflect.Descriptor instead.
+
+func (x *GetLineRequest) GetPrimaryKeyValue() string
+
+func (x *GetLineRequest) GetTable() *Table
+
+func (*GetLineRequest) ProtoMessage()
+
+func (x *GetLineRequest) ProtoReflect() protoreflect.Message
+
+func (x *GetLineRequest) Reset()
+
+func (x *GetLineRequest) String() string
+
+type Line struct {
+	Table      string            `protobuf:"bytes,1,opt,name=table,proto3" json:"table,omitempty"`
+	PrimaryKey string            `protobuf:"bytes,2,opt,name=primary_key,json=primaryKey,proto3" json:"primary_key,omitempty"`
+	Line       map[string]string `protobuf:"bytes,3,rep,name=line,proto3" json:"line,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	// Has unexported fields.
+}
+
+func (*Line) Descriptor() ([]byte, []int)
+    Deprecated: Use Line.ProtoReflect.Descriptor instead.
+
+func (x *Line) GetLine() map[string]string
+
+func (x *Line) GetPrimaryKey() string
+
+func (x *Line) GetTable() string
+
+func (*Line) ProtoMessage()
+
+func (x *Line) ProtoReflect() protoreflect.Message
+
+func (x *Line) Reset()
+
+func (x *Line) String() string
+
+type MySQLConnector struct {
+	// Has unexported fields.
+}
+    MySQLConnector is a connector for MySQL databases
+
+func (connector *MySQLConnector) Connect(user, password, host, dbname string) error
+    Connect connects to a MySQL database
+
+func (connector *MySQLConnector) CreateTable(table *Table) error
+    CreateTable creates a table in a MySQL database
+
+func (connector *MySQLConnector) DeleteLine(line *Line) error
+    DeleteLine deletes a line from a MySQL database
+
+func (connector *MySQLConnector) DeleteTable(table *Table) error
+    DeleteTable deletes a table from a MySQL database
+
+func (connector *MySQLConnector) Disconnect() error
+    Disconnect disconnects from a MySQL database
+
+func (c *MySQLConnector) GetLine(request *GetLineRequest) (*Line, error)
+    Connect connects to a MySQL database
+
+func (connector *MySQLConnector) InsertLine(line *Line) error
+    InsertLine inserts a line into a MySQL database
+
+func (connector *MySQLConnector) UpdateLine(line *Line) error
+    UpdateLine updates a line in a MySQL database
+
+type StorageClient interface {
+	Register(ctx context.Context, in *Database, opts ...grpc.CallOption) (*StorageResponse, error)
+	CreateTable(ctx context.Context, in *Table, opts ...grpc.CallOption) (*StorageResponse, error)
+	DeleteTable(ctx context.Context, in *Table, opts ...grpc.CallOption) (*StorageResponse, error)
+	InsertLine(ctx context.Context, in *Line, opts ...grpc.CallOption) (*StorageResponse, error)
+	DeleteLine(ctx context.Context, in *Line, opts ...grpc.CallOption) (*StorageResponse, error)
+	UpdateLine(ctx context.Context, in *Line, opts ...grpc.CallOption) (*StorageResponse, error)
+	GetLine(ctx context.Context, in *GetLineRequest, opts ...grpc.CallOption) (*Line, error)
+}
+    StorageClient is the client API for Storage service.
+
+    For semantics around ctx use and closing/ending streaming RPCs, please refer
+    to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+
+func NewStorageClient(cc grpc.ClientConnInterface) StorageClient
+
+type StorageCommand struct {
+	// [-d <database> -dp <data port> -h <host> -u <user> -pw <password>]
+	Port     int
+	Database string
+	DataPort int
+	Host     string
+	User     string
+	Password string
+}
+
+type StorageResponse struct {
+	Status  StorageResponse_Status `protobuf:"varint,1,opt,name=status,proto3,enum=StorageResponse_Status" json:"status,omitempty"`
+	Message string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	// Has unexported fields.
+}
+
+func (*StorageResponse) Descriptor() ([]byte, []int)
+    Deprecated: Use StorageResponse.ProtoReflect.Descriptor instead.
+
+func (x *StorageResponse) GetMessage() string
+
+func (x *StorageResponse) GetStatus() StorageResponse_Status
+
+func (*StorageResponse) ProtoMessage()
+
+func (x *StorageResponse) ProtoReflect() protoreflect.Message
+
+func (x *StorageResponse) Reset()
+
+func (x *StorageResponse) String() string
+
+type StorageResponse_Status int32
+
+const (
+	StorageResponse_OK    StorageResponse_Status = 0
+	StorageResponse_ERROR StorageResponse_Status = 1
+)
+func (StorageResponse_Status) Descriptor() protoreflect.EnumDescriptor
+
+func (x StorageResponse_Status) Enum() *StorageResponse_Status
+
+func (StorageResponse_Status) EnumDescriptor() ([]byte, []int)
+    Deprecated: Use StorageResponse_Status.Descriptor instead.
+
+func (x StorageResponse_Status) Number() protoreflect.EnumNumber
+
+func (x StorageResponse_Status) String() string
+
+func (StorageResponse_Status) Type() protoreflect.EnumType
+
+type StorageServer interface {
+	Register(context.Context, *Database) (*StorageResponse, error)
+	CreateTable(context.Context, *Table) (*StorageResponse, error)
+	DeleteTable(context.Context, *Table) (*StorageResponse, error)
+	InsertLine(context.Context, *Line) (*StorageResponse, error)
+	DeleteLine(context.Context, *Line) (*StorageResponse, error)
+	UpdateLine(context.Context, *Line) (*StorageResponse, error)
+	GetLine(context.Context, *GetLineRequest) (*Line, error)
+	// Has unexported methods.
+}
+    StorageServer is the server API for Storage service. All implementations
+    must embed UnimplementedStorageServer for forward compatibility
+
+type StorageServerImpl struct {
+	// Has unexported fields.
+}
+    StorageServerImpl is an implementation of the storage server
+
+func (s *StorageServerImpl) CreateTable(ctx context.Context, table *Table) (*StorageResponse, error)
+    CreateTable creates a table in the database, the table is identified by the
+    name
+
+func (s *StorageServerImpl) DeleteLine(ctx context.Context, line *Line) (*StorageResponse, error)
+    DeleteLine deletes a line from the database, the line is identified by the
+    primary key the return value is a line
+
+func (s *StorageServerImpl) DeleteTable(ctx context.Context, table *Table) (*StorageResponse, error)
+    DeleteTable deletes a table from the database, the table is identified by
+    the name
+
+func (s *StorageServerImpl) GetLine(ctx context.Context, request *GetLineRequest) (*Line, error)
+    GetLine returns a line from the database, the line is identified by the
+    primary key the return value is a line
+
+func (s *StorageServerImpl) InsertLine(ctx context.Context, line *Line) (*StorageResponse, error)
+    InsertLine inserts a line into the database
+
+func (s *StorageServerImpl) Register(ctx context.Context, db *Database) (*StorageResponse, error)
+    Register registers a database to the storage server, the database is
+    identified by the type
+
+func (s *StorageServerImpl) UpdateLine(ctx context.Context, line *Line) (*StorageResponse, error)
+    UpdateLine updates a line in the database, the line is identified by the
+    primary key the line is updated with the values in the line parameter
+
+type Table struct {
+	Name       string            `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Columns    map[string]string `protobuf:"bytes,2,rep,name=columns,proto3" json:"columns,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	PrimaryKey string            `protobuf:"bytes,3,opt,name=primary_key,json=primaryKey,proto3" json:"primary_key,omitempty"`
+	// Has unexported fields.
+}
+
+func (*Table) Descriptor() ([]byte, []int)
+    Deprecated: Use Table.ProtoReflect.Descriptor instead.
+
+func (x *Table) GetColumns() map[string]string
+
+func (x *Table) GetName() string
+
+func (x *Table) GetPrimaryKey() string
+
+func (*Table) ProtoMessage()
+
+func (x *Table) ProtoReflect() protoreflect.Message
+
+func (x *Table) Reset()
+
+func (x *Table) String() string
+
+type UnimplementedStorageServer struct {
+}
+    UnimplementedStorageServer must be embedded to have forward compatible
+    implementations.
+
+func (UnimplementedStorageServer) CreateTable(context.Context, *Table) (*StorageResponse, error)
+
+func (UnimplementedStorageServer) DeleteLine(context.Context, *Line) (*StorageResponse, error)
+
+func (UnimplementedStorageServer) DeleteTable(context.Context, *Table) (*StorageResponse, error)
+
+func (UnimplementedStorageServer) GetLine(context.Context, *GetLineRequest) (*Line, error)
+
+func (UnimplementedStorageServer) InsertLine(context.Context, *Line) (*StorageResponse, error)
+
+func (UnimplementedStorageServer) Register(context.Context, *Database) (*StorageResponse, error)
+
+func (UnimplementedStorageServer) UpdateLine(context.Context, *Line) (*StorageResponse, error)
+
+type UnsafeStorageServer interface {
+	// Has unexported methods.
+}
+    UnsafeStorageServer may be embedded to opt out of forward compatibility for
+    this service. Use of this interface is not recommended, as added methods to
+    StorageServer will result in compilation errors.
+

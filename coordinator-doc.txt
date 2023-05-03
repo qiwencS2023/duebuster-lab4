@@ -1,0 +1,514 @@
+
+
+VARIABLES
+
+var (
+	StorageResponse_Status_name = map[int32]string{
+		0: "OK",
+		1: "ERROR",
+	}
+	StorageResponse_Status_value = map[string]int32{
+		"OK":    0,
+		"ERROR": 1,
+	}
+)
+    Enum value maps for StorageResponse_Status.
+
+var CoordinatorService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "CoordinatorService",
+	HandlerType: (*CoordinatorServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "RegisterStorageServer",
+			Handler:    _CoordinatorService_RegisterStorageServer_Handler,
+		},
+		{
+			MethodName: "CreateTable",
+			Handler:    _CoordinatorService_CreateTable_Handler,
+		},
+		{
+			MethodName: "DeleteTable",
+			Handler:    _CoordinatorService_DeleteTable_Handler,
+		},
+		{
+			MethodName: "InsertLine",
+			Handler:    _CoordinatorService_InsertLine_Handler,
+		},
+		{
+			MethodName: "DeleteLine",
+			Handler:    _CoordinatorService_DeleteLine_Handler,
+		},
+		{
+			MethodName: "GetLine",
+			Handler:    _CoordinatorService_GetLine_Handler,
+		},
+		{
+			MethodName: "UpdateLine",
+			Handler:    _CoordinatorService_UpdateLine_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "coordinator.proto",
+}
+    CoordinatorService_ServiceDesc is the grpc.ServiceDesc for
+    CoordinatorService service. It's only intended for direct use with
+    grpc.RegisterService, and not to be introspected or modified (even as a
+    copy)
+
+var File_coordinator_proto protoreflect.FileDescriptor
+var File_entities_proto protoreflect.FileDescriptor
+var File_storage_proto protoreflect.FileDescriptor
+var Storage_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "Storage",
+	HandlerType: (*StorageServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Register",
+			Handler:    _Storage_Register_Handler,
+		},
+		{
+			MethodName: "CreateTable",
+			Handler:    _Storage_CreateTable_Handler,
+		},
+		{
+			MethodName: "DeleteTable",
+			Handler:    _Storage_DeleteTable_Handler,
+		},
+		{
+			MethodName: "InsertLine",
+			Handler:    _Storage_InsertLine_Handler,
+		},
+		{
+			MethodName: "DeleteLine",
+			Handler:    _Storage_DeleteLine_Handler,
+		},
+		{
+			MethodName: "UpdateLine",
+			Handler:    _Storage_UpdateLine_Handler,
+		},
+		{
+			MethodName: "GetLine",
+			Handler:    _Storage_GetLine_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "storage.proto",
+}
+    Storage_ServiceDesc is the grpc.ServiceDesc for Storage service. It's only
+    intended for direct use with grpc.RegisterService, and not to be
+    introspected or modified (even as a copy)
+
+
+FUNCTIONS
+
+func RegisterCoordinatorServiceServer(s grpc.ServiceRegistrar, srv CoordinatorServiceServer)
+func RegisterStorageServer(s grpc.ServiceRegistrar, srv StorageServer)
+
+TYPES
+
+type CoordinatorCache interface {
+	InvalidateCache(table string, pkValue string)
+	GetCache(request *GetLineRequest) (*Line, bool)
+	PutCache(request *GetLineRequest, line *Line)
+}
+
+type CoordinatorCacheImpl struct {
+	// Has unexported fields.
+}
+
+func NewCoordinatorCache() *CoordinatorCacheImpl
+
+func (c *CoordinatorCacheImpl) GetCache(request *GetLineRequest) (*Line, bool)
+
+func (c *CoordinatorCacheImpl) InvalidateCache(table string, pkValue string)
+
+func (c *CoordinatorCacheImpl) PutCache(request *GetLineRequest, line *Line)
+
+type CoordinatorResponse struct {
+	Message string `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	// Has unexported fields.
+}
+
+func (*CoordinatorResponse) Descriptor() ([]byte, []int)
+    Deprecated: Use CoordinatorResponse.ProtoReflect.Descriptor instead.
+
+func (x *CoordinatorResponse) GetMessage() string
+
+func (*CoordinatorResponse) ProtoMessage()
+
+func (x *CoordinatorResponse) ProtoReflect() protoreflect.Message
+
+func (x *CoordinatorResponse) Reset()
+
+func (x *CoordinatorResponse) String() string
+
+type CoordinatorServerImpl struct {
+	CoordinatorCache
+	SSM                 StorageServerMap
+	CoordinatorTableMap map[string]*CoordinatorTable
+}
+    CoordinatorServerImpl is the coordinator server, which is responsible for
+    managing the storage servers
+
+func NewCoordinatorServerImpl(storagePorts ...string) *CoordinatorServerImpl
+    NewCoordinatorServerImpl creates a new coordinator server It will create a
+    new coordinator server with a new coordinator cache and a new storage server
+    map
+
+func (c *CoordinatorServerImpl) CreateTable(ctx context.Context, request *CreateTableRequest) (*CoordinatorResponse, error)
+    CreateTable creates a table in the coordinator's view It will randomly
+    assign storage servers to the table partitions
+
+func (c *CoordinatorServerImpl) DeleteLine(ctx context.Context, line *Line) (*CoordinatorResponse, error)
+    DeleteLine deletes a line from a table in the coordinator's view It will
+    delete the line from all the partitions and replication partitions
+
+func (c *CoordinatorServerImpl) DeleteTable(ctx context.Context, table *Table) (*CoordinatorResponse, error)
+    DeleteTable deletes a table in the coordinator's view, and also deletes the
+    underlying table partitions and replication partitions
+
+func (c *CoordinatorServerImpl) GetCoordinatorTable(tableName string) *CoordinatorTable
+    GetCoordinatorTable returns a coordinator table from the coordinator table
+    map It will be used to get the coordinator table from the coordinator table
+    map
+
+func (c *CoordinatorServerImpl) GetLine(ctx context.Context, lineRequest *GetLineRequest) (*Line, error)
+    GetLine gets a line from a table in the coordinator's view It will first
+    check the cache, if not found, it will send the query to all the partitions
+
+func (c *CoordinatorServerImpl) InsertLine(ctx context.Context, line *Line) (*CoordinatorResponse, error)
+    InsertLine inserts a line into a table in the coordinator's view It will
+    randomly and by default insert into the partition with lower count to
+    achieve load balancing
+
+func (c *CoordinatorServerImpl) RegisterStorageServer(ctx context.Context, request *RegisterRequest) (*CoordinatorResponse, error)
+    RegisterStorageServer registers a storage server to the coordinator It will
+    add the storage server to the storage server map
+
+func (c *CoordinatorServerImpl) UpdateLine(ctx context.Context, line *Line) (*CoordinatorResponse, error)
+    UpdateLine updates a line in a table in the coordinator's view It will
+    update the line in all the partitions and replication partitions
+
+type CoordinatorServiceClient interface {
+	RegisterStorageServer(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*CoordinatorResponse, error)
+	CreateTable(ctx context.Context, in *CreateTableRequest, opts ...grpc.CallOption) (*CoordinatorResponse, error)
+	DeleteTable(ctx context.Context, in *Table, opts ...grpc.CallOption) (*CoordinatorResponse, error)
+	InsertLine(ctx context.Context, in *Line, opts ...grpc.CallOption) (*CoordinatorResponse, error)
+	DeleteLine(ctx context.Context, in *Line, opts ...grpc.CallOption) (*CoordinatorResponse, error)
+	GetLine(ctx context.Context, in *GetLineRequest, opts ...grpc.CallOption) (*Line, error)
+	UpdateLine(ctx context.Context, in *Line, opts ...grpc.CallOption) (*CoordinatorResponse, error)
+}
+    CoordinatorServiceClient is the client API for CoordinatorService service.
+
+    For semantics around ctx use and closing/ending streaming RPCs, please refer
+    to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+
+func NewCoordinatorServiceClient(cc grpc.ClientConnInterface) CoordinatorServiceClient
+
+type CoordinatorServiceServer interface {
+	RegisterStorageServer(context.Context, *RegisterRequest) (*CoordinatorResponse, error)
+	CreateTable(context.Context, *CreateTableRequest) (*CoordinatorResponse, error)
+	DeleteTable(context.Context, *Table) (*CoordinatorResponse, error)
+	InsertLine(context.Context, *Line) (*CoordinatorResponse, error)
+	DeleteLine(context.Context, *Line) (*CoordinatorResponse, error)
+	GetLine(context.Context, *GetLineRequest) (*Line, error)
+	UpdateLine(context.Context, *Line) (*CoordinatorResponse, error)
+	// Has unexported methods.
+}
+    CoordinatorServiceServer is the server API for CoordinatorService service.
+    All implementations must embed UnimplementedCoordinatorServiceServer for
+    forward compatibility
+
+type CoordinatorTable struct {
+	TablePartitions       []*TablePartition
+	ReplicationPartitions []*TablePartition
+	PrimaryKey            string
+	// Has unexported fields.
+}
+    CoordinatorTable is a table in the coordinator's view, which is partitioned
+    and replicated
+
+type CreateTableRequest struct {
+	Table          *Table `protobuf:"bytes,1,opt,name=table,proto3" json:"table,omitempty"`
+	PartitionCount int64  `protobuf:"varint,2,opt,name=partition_count,json=partitionCount,proto3" json:"partition_count,omitempty"`
+	// Has unexported fields.
+}
+
+func (*CreateTableRequest) Descriptor() ([]byte, []int)
+    Deprecated: Use CreateTableRequest.ProtoReflect.Descriptor instead.
+
+func (x *CreateTableRequest) GetPartitionCount() int64
+
+func (x *CreateTableRequest) GetTable() *Table
+
+func (*CreateTableRequest) ProtoMessage()
+
+func (x *CreateTableRequest) ProtoReflect() protoreflect.Message
+
+func (x *CreateTableRequest) Reset()
+
+func (x *CreateTableRequest) String() string
+
+type Database struct {
+	Type     string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Host     string `protobuf:"bytes,2,opt,name=host,proto3" json:"host,omitempty"`
+	Port     int32  `protobuf:"varint,3,opt,name=port,proto3" json:"port,omitempty"`
+	Database string `protobuf:"bytes,4,opt,name=database,proto3" json:"database,omitempty"`
+	User     string `protobuf:"bytes,5,opt,name=user,proto3" json:"user,omitempty"`
+	Password string `protobuf:"bytes,6,opt,name=password,proto3" json:"password,omitempty"`
+	// Has unexported fields.
+}
+
+func (*Database) Descriptor() ([]byte, []int)
+    Deprecated: Use Database.ProtoReflect.Descriptor instead.
+
+func (x *Database) GetDatabase() string
+
+func (x *Database) GetHost() string
+
+func (x *Database) GetPassword() string
+
+func (x *Database) GetPort() int32
+
+func (x *Database) GetType() string
+
+func (x *Database) GetUser() string
+
+func (*Database) ProtoMessage()
+
+func (x *Database) ProtoReflect() protoreflect.Message
+
+func (x *Database) Reset()
+
+func (x *Database) String() string
+
+type GetLineRequest struct {
+	Table           *Table `protobuf:"bytes,1,opt,name=table,proto3" json:"table,omitempty"`
+	PrimaryKeyValue string `protobuf:"bytes,2,opt,name=primary_key_value,json=primaryKeyValue,proto3" json:"primary_key_value,omitempty"`
+	// Has unexported fields.
+}
+
+func (*GetLineRequest) Descriptor() ([]byte, []int)
+    Deprecated: Use GetLineRequest.ProtoReflect.Descriptor instead.
+
+func (x *GetLineRequest) GetPrimaryKeyValue() string
+
+func (x *GetLineRequest) GetTable() *Table
+
+func (*GetLineRequest) ProtoMessage()
+
+func (x *GetLineRequest) ProtoReflect() protoreflect.Message
+
+func (x *GetLineRequest) Reset()
+
+func (x *GetLineRequest) String() string
+
+type Line struct {
+	Table      string            `protobuf:"bytes,1,opt,name=table,proto3" json:"table,omitempty"`
+	PrimaryKey string            `protobuf:"bytes,2,opt,name=primary_key,json=primaryKey,proto3" json:"primary_key,omitempty"`
+	Line       map[string]string `protobuf:"bytes,3,rep,name=line,proto3" json:"line,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	// Has unexported fields.
+}
+
+func (*Line) Descriptor() ([]byte, []int)
+    Deprecated: Use Line.ProtoReflect.Descriptor instead.
+
+func (x *Line) GetLine() map[string]string
+
+func (x *Line) GetPrimaryKey() string
+
+func (x *Line) GetTable() string
+
+func (*Line) ProtoMessage()
+
+func (x *Line) ProtoReflect() protoreflect.Message
+
+func (x *Line) Reset()
+
+func (x *Line) String() string
+
+type RegisterRequest struct {
+	StorageAddr string `protobuf:"bytes,1,opt,name=storage_addr,json=storageAddr,proto3" json:"storage_addr,omitempty"`
+	// Has unexported fields.
+}
+
+func (*RegisterRequest) Descriptor() ([]byte, []int)
+    Deprecated: Use RegisterRequest.ProtoReflect.Descriptor instead.
+
+func (x *RegisterRequest) GetStorageAddr() string
+
+func (*RegisterRequest) ProtoMessage()
+
+func (x *RegisterRequest) ProtoReflect() protoreflect.Message
+
+func (x *RegisterRequest) Reset()
+
+func (x *RegisterRequest) String() string
+
+type StorageClient interface {
+	Register(ctx context.Context, in *Database, opts ...grpc.CallOption) (*StorageResponse, error)
+	CreateTable(ctx context.Context, in *Table, opts ...grpc.CallOption) (*StorageResponse, error)
+	DeleteTable(ctx context.Context, in *Table, opts ...grpc.CallOption) (*StorageResponse, error)
+	InsertLine(ctx context.Context, in *Line, opts ...grpc.CallOption) (*StorageResponse, error)
+	DeleteLine(ctx context.Context, in *Line, opts ...grpc.CallOption) (*StorageResponse, error)
+	UpdateLine(ctx context.Context, in *Line, opts ...grpc.CallOption) (*StorageResponse, error)
+	GetLine(ctx context.Context, in *GetLineRequest, opts ...grpc.CallOption) (*Line, error)
+}
+    StorageClient is the client API for Storage service.
+
+    For semantics around ctx use and closing/ending streaming RPCs, please refer
+    to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+
+func NewStorageClient(cc grpc.ClientConnInterface) StorageClient
+
+type StorageResponse struct {
+	Status  StorageResponse_Status `protobuf:"varint,1,opt,name=status,proto3,enum=StorageResponse_Status" json:"status,omitempty"`
+	Message string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	// Has unexported fields.
+}
+
+func (*StorageResponse) Descriptor() ([]byte, []int)
+    Deprecated: Use StorageResponse.ProtoReflect.Descriptor instead.
+
+func (x *StorageResponse) GetMessage() string
+
+func (x *StorageResponse) GetStatus() StorageResponse_Status
+
+func (*StorageResponse) ProtoMessage()
+
+func (x *StorageResponse) ProtoReflect() protoreflect.Message
+
+func (x *StorageResponse) Reset()
+
+func (x *StorageResponse) String() string
+
+type StorageResponse_Status int32
+
+const (
+	StorageResponse_OK    StorageResponse_Status = 0
+	StorageResponse_ERROR StorageResponse_Status = 1
+)
+func (StorageResponse_Status) Descriptor() protoreflect.EnumDescriptor
+
+func (x StorageResponse_Status) Enum() *StorageResponse_Status
+
+func (StorageResponse_Status) EnumDescriptor() ([]byte, []int)
+    Deprecated: Use StorageResponse_Status.Descriptor instead.
+
+func (x StorageResponse_Status) Number() protoreflect.EnumNumber
+
+func (x StorageResponse_Status) String() string
+
+func (StorageResponse_Status) Type() protoreflect.EnumType
+
+type StorageServer interface {
+	Register(context.Context, *Database) (*StorageResponse, error)
+	CreateTable(context.Context, *Table) (*StorageResponse, error)
+	DeleteTable(context.Context, *Table) (*StorageResponse, error)
+	InsertLine(context.Context, *Line) (*StorageResponse, error)
+	DeleteLine(context.Context, *Line) (*StorageResponse, error)
+	UpdateLine(context.Context, *Line) (*StorageResponse, error)
+	GetLine(context.Context, *GetLineRequest) (*Line, error)
+	// Has unexported methods.
+}
+    StorageServer is the server API for Storage service. All implementations
+    must embed UnimplementedStorageServer for forward compatibility
+
+type StorageServerImpl struct {
+	StorageClient
+	// Has unexported fields.
+}
+    StorageCommand is the command line arguments for the storage server
+
+func RandomPartitions(m map[string]*StorageServerImpl, n int) []*StorageServerImpl
+    RandomPartitions returns n random partitions from the storage server map It
+    will be used to select n random partitions for replication
+
+type StorageServerMap struct {
+	// Has unexported fields.
+}
+    StorageServerMap is a map of storage servers, indexed by port
+
+type Table struct {
+	Name       string            `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Columns    map[string]string `protobuf:"bytes,2,rep,name=columns,proto3" json:"columns,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	PrimaryKey string            `protobuf:"bytes,3,opt,name=primary_key,json=primaryKey,proto3" json:"primary_key,omitempty"`
+	// Has unexported fields.
+}
+
+func (*Table) Descriptor() ([]byte, []int)
+    Deprecated: Use Table.ProtoReflect.Descriptor instead.
+
+func (x *Table) GetColumns() map[string]string
+
+func (x *Table) GetName() string
+
+func (x *Table) GetPrimaryKey() string
+
+func (*Table) ProtoMessage()
+
+func (x *Table) ProtoReflect() protoreflect.Message
+
+func (x *Table) Reset()
+
+func (x *Table) String() string
+
+type TablePartition struct {
+	StorageServer *StorageServerImpl
+	Name          string
+	RowCount      int
+}
+    TablePartition is a partition of a table, stored on a storage server
+
+type UnimplementedCoordinatorServiceServer struct {
+}
+    UnimplementedCoordinatorServiceServer must be embedded to have forward
+    compatible implementations.
+
+func (UnimplementedCoordinatorServiceServer) CreateTable(context.Context, *CreateTableRequest) (*CoordinatorResponse, error)
+
+func (UnimplementedCoordinatorServiceServer) DeleteLine(context.Context, *Line) (*CoordinatorResponse, error)
+
+func (UnimplementedCoordinatorServiceServer) DeleteTable(context.Context, *Table) (*CoordinatorResponse, error)
+
+func (UnimplementedCoordinatorServiceServer) GetLine(context.Context, *GetLineRequest) (*Line, error)
+
+func (UnimplementedCoordinatorServiceServer) InsertLine(context.Context, *Line) (*CoordinatorResponse, error)
+
+func (UnimplementedCoordinatorServiceServer) RegisterStorageServer(context.Context, *RegisterRequest) (*CoordinatorResponse, error)
+
+func (UnimplementedCoordinatorServiceServer) UpdateLine(context.Context, *Line) (*CoordinatorResponse, error)
+
+type UnimplementedStorageServer struct {
+}
+    UnimplementedStorageServer must be embedded to have forward compatible
+    implementations.
+
+func (UnimplementedStorageServer) CreateTable(context.Context, *Table) (*StorageResponse, error)
+
+func (UnimplementedStorageServer) DeleteLine(context.Context, *Line) (*StorageResponse, error)
+
+func (UnimplementedStorageServer) DeleteTable(context.Context, *Table) (*StorageResponse, error)
+
+func (UnimplementedStorageServer) GetLine(context.Context, *GetLineRequest) (*Line, error)
+
+func (UnimplementedStorageServer) InsertLine(context.Context, *Line) (*StorageResponse, error)
+
+func (UnimplementedStorageServer) Register(context.Context, *Database) (*StorageResponse, error)
+
+func (UnimplementedStorageServer) UpdateLine(context.Context, *Line) (*StorageResponse, error)
+
+type UnsafeCoordinatorServiceServer interface {
+	// Has unexported methods.
+}
+    UnsafeCoordinatorServiceServer may be embedded to opt out of forward
+    compatibility for this service. Use of this interface is not recommended, as
+    added methods to CoordinatorServiceServer will result in compilation errors.
+
+type UnsafeStorageServer interface {
+	// Has unexported methods.
+}
+    UnsafeStorageServer may be embedded to opt out of forward compatibility for
+    this service. Use of this interface is not recommended, as added methods to
+    StorageServer will result in compilation errors.
+
