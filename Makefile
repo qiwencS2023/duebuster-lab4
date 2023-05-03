@@ -23,6 +23,7 @@ proto:
 	cp ./storage/storage_grpc.pb.go ./coordinator/storage_grpc.pb.go
 
 build:
+	make prepare
 	go build -o dist/storage ./storage/*.go
 	go build -o dist/coordinator ./coordinator/*.go
 
